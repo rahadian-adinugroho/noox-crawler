@@ -1,3 +1,9 @@
+# testing file & dump file
+*dump.txt
+
+# notes file
+notes.txt
+
 # cache files for sublime text
 *.tmlanguage.cache
 *.tmPreferences.cache

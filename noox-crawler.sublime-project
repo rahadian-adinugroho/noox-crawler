@@ -2,7 +2,20 @@
 	"folders":
 	[
 		{
+			"file_include_patterns":
+			[
+				"*.py",
+				"*.json"
+			],
 			"path": "."
+		},
+		{
+			"file_include_patterns":
+			[
+				"*.json"
+			],
+			"name": "Configurations",
+			"path": "config"
 		}
 	]
 }
