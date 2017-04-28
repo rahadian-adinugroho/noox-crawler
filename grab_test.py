@@ -47,25 +47,27 @@ urls = [
 	'https://news.detik.com/berita/3487026/ini-nama-nama-anggota-dpr-inisiator-angket-kpk'
 ]
 
+spc_chars = {"\n" : "", "\t" : "", "\r" : "", "\r\n" : ""}
+
 base_regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
-cur_config = {}
 compiled_regex = None
+
+cur_config = {}
 
 for url in urls:
 	cur_url_domain = get_domain_name(url)
 	if len(cur_config) == 0 or cur_config["sitename"] != cur_url_domain:
-		print('Loading config for: '+cur_url_domain)
 		conf_dir = './config/'+cur_url_domain+'.conf.json'
 		if os.path.isfile(conf_dir):
 			with open(conf_dir) as conf_file:
 				cur_config = json.load(conf_file)
-				print('building regex...')
 				regex = base_regex
 				if "article_regex_remove" in cur_config:
 					regex+='|'+'|'.join(cur_config["article_regex_remove"])
 
 				if "article_tag_replace" in cur_config:
 					regex+='|'+''.join(map(lambda tag: '(?!'+re.escape(tag)+')', cur_config["article_tag_replace"]))+r'(?:<\/?(?:\s|\S)*?>)'
+					cur_config["article_tag_replace"].update(spc_chars)
 				else:
 					regex+='|'+r'(<\/?(\s|\S)*?>)'
 
@@ -75,7 +77,6 @@ for url in urls:
 
 	# r = re.search(confList["detik"]["url_regex"], url).group(1) # for categorizing
 
-	print('retrieving page data...')
 	req_data = requests.get(url, header)
 	soup = BeautifulSoup(req_data.text, 'lxml')
 	
@@ -84,11 +85,14 @@ for url in urls:
 	else:
 		article_parts = soup.findAll(cur_config["article_tag"])
 
-	print("cleaning article...")
 	article = ''
 	for part in article_parts:
 		cleantext = re.sub(compiled_regex, '', str(part))
+
 		if "article_tag_replace" in cur_config:
-			article+=multireplace(multireplace(cleantext, cur_config["article_tag_replace"]), {"\n" : "", "\t" : ""})
-	print(article)
+			article += multireplace(cleantext, cur_config["article_tag_replace"])
+		else:
+			article += multireplace(cleantext, spc_chars)
+
+	print(article+'\n\n')
 # print(article)
