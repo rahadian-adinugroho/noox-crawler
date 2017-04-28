@@ -1,0 +1,18 @@
+{
+    "sitename": "kompas",
+    "url": "http://kompas.com",
+    "url_regex": "^http.*\\/([a-zA-Z]*)\\.(?:.*\\/read\\/.*)$",
+    "article_tag": "div",
+    "article_attr": "class",
+    "article_attr_val": "read__content",
+    "article_tag_replace": 
+    {
+        "<p>" : "<br><br>",
+        "<strong>" : "<strong>",
+        "</strong>" : "</strong>"
+    },
+    "article_regex_remove" : 
+    [
+    	"(?:\\(Baca.*?\\))"
+    ]
+}
