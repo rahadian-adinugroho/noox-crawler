@@ -6,7 +6,6 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
-
 def multireplace(string, replacements):
     """
     Given a string and a replacement map, it returns the replaced string.
@@ -90,6 +89,6 @@ for url in urls:
 	for part in article_parts:
 		cleantext = re.sub(compiled_regex, '', str(part))
 		if "article_tag_replace" in cur_config:
-			article+=multireplace(cleantext, cur_config["article_tag_replace"])
+			article+=multireplace(multireplace(cleantext, cur_config["article_tag_replace"]), {"\n" : "", "\t" : ""})
 	print(article)
 # print(article)
