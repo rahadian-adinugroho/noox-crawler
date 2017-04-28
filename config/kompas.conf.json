@@ -13,6 +13,7 @@
     },
     "article_regex_remove" : 
     [
-    	"(?:\\(Baca.*?\\))"
+    	"(?:\\(Baca.*?\\))",
+    	"(?:<div.+class=\"video\".*?<\\/div>)"
     ]
 }

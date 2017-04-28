@@ -1,7 +1,7 @@
 {
     "sitename": "detik",
     "url": "http://detik.com",
-    "url_regex": "^http.*\\/([a-zA-Z]*)\\.(?:.*\\/read\\/.*|.*\\/d-[0-9]*\\/.*)$",
+    "url_regex": "^http.+\\/(?:([^.]+)\\.)(?:.*\\/read\\/.*|.*\\/d-[0-9]*\\/.*|.*\\/berita\\/.*)$",
     "article_tag": "div",
     "article_attr": "class",
     "article_attr_val": "detail_text",
