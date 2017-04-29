@@ -66,8 +66,8 @@ for url in urls:
 					regex+='|'+'|'.join(cur_config["article_regex_remove"])
 
 				if "article_tag_replace" in cur_config:
-					regex+='|'+''.join(map(lambda tag: '(?!'+re.escape(tag)+')', cur_config["article_tag_replace"]))+r'(?:<\/?(?:\s|\S)*?>)'
 					cur_config["article_tag_replace"].update(spc_chars)
+					regex+='|'+''.join(map(lambda tag: '(?!'+re.escape(tag)+')', cur_config["article_tag_replace"]))+r'(?:<\/?(?:\s|\S)*?>)'
 				else:
 					regex+='|'+r'(<\/?(\s|\S)*?>)'
 
@@ -79,6 +79,12 @@ for url in urls:
 
 	req_data = requests.get(url, header)
 	soup = BeautifulSoup(req_data.text, 'lxml')
+
+	if "title_attr" in cur_config and cur_config["title_attr"] is not None:
+		title = soup.find(cur_config["title_tag"], {cur_config["title_attr"]: re.compile(cur_config["title_attr_val"])}).get_text()
+	else:
+		title = soup.find(cur_config["title_tag"]).get_text()
+	print(title+"\n")
 	
 	if "article_attr" in cur_config:
 		article_parts = soup.findAll(cur_config["article_tag"], {cur_config["article_attr"]: re.compile(cur_config["article_attr_val"])})
