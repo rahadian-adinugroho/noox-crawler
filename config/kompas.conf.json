@@ -1,7 +1,8 @@
 {
     "sitename": "kompas",
-    "url": "http://kompas.com",
+    "url": "http://kompas.com/sitemap.php",
     "url_regex": "^http.*\\/([a-zA-Z]*)\\.(?:.*\\/read\\/.*)$",
+    "crawl_depth": 0,
     "title_tag": "h1",
     "title_attr": "class",
     "title_attr_val": "read__title",
