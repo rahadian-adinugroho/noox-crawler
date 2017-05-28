@@ -2,6 +2,7 @@ import os
 import json
 import re
 from modules.link_extractor import LinkExtractor
+from news_grabber import NewsGrabber
 # from dateutil.parser import parser as dateparse
 
 conf_dir = './config/kompas.conf.json'
@@ -12,17 +13,19 @@ if os.path.isfile(conf_dir):
         # print(config)
         a = LinkExtractor(config)
         # print(a.get_urls(1))
-        links = a.get_urls()
+        links = a.get_urls(max_link=50)
+        grabber = NewsGrabber(config)
+        news = grabber.process(links)
 
         file = open('detik_url2_dump.txt', 'w')
-
         print('Writing to file...')
-        for link in links:
-            groups = regex.search(link)
-            if groups is None:
-                subd = 'ERR'
-            else:
-                subd = groups.group(1)
-            file.write(subd+" : "+link+'\n')
-        file.write(str(links))
+        # for data in news:
+        #     groups = regex.search(link)
+        #     if groups is None:
+        #         subd = 'ERR'
+        #     else:
+        #         subd = groups.group(1)
+        #     file.write(subd+" : "+link+'\n')
+        # file.write(str(links))
+        json.dump(news, file)
         file.close()

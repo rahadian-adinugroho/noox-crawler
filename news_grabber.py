@@ -50,6 +50,7 @@ class NewsGrabber:
             raise TypeError('url_list is expected to be an instance of list')
         # use deque for better performance
         urls = deque(url_list)
+        ret = []
         while urls:
             # empty the buffer for each iteration
             buffer_ = []
@@ -89,7 +90,9 @@ class NewsGrabber:
                     else:
                         article += self._multireplace(cleantext, spc_chars)
 
-                print({'title': title, 'text': article})
+                ret.append({'title': title, 'url': url, 'content': article})
+                # print({'title': title, 'text': article})
+        return ret
 
     def _fill_buffer(self, buffer_, urls):
         while urls and len(buffer_) < 25:
@@ -132,18 +135,18 @@ class NewsGrabber:
         url_parts = urlparse(url).hostname.split('.')
         return url_parts[1 if len(url_parts) == 3 else 0]
 
-urls = [
-        'https://inet.detik.com/consumer/d-3496637/snapdragon-660-dan-630-jadi-jagoan-baru-qualcomm',
-        'http://nasional.kompas.com/read/2017/04/27/11333611/ada.setya.novanto.di.balik.proyek.e-ktp.pengusaha.ini.tolak.ikut.lelang',
-        'https://news.detik.com/berita/3487026/ini-nama-nama-anggota-dpr-inisiator-angket-kpk'
-    ]
+# urls = [
+#         'https://inet.detik.com/consumer/d-3496637/snapdragon-660-dan-630-jadi-jagoan-baru-qualcomm',
+#         'http://nasional.kompas.com/read/2017/04/27/11333611/ada.setya.novanto.di.balik.proyek.e-ktp.pengusaha.ini.tolak.ikut.lelang',
+#         'https://news.detik.com/berita/3487026/ini-nama-nama-anggota-dpr-inisiator-angket-kpk'
+#     ]
 
-conf_dir = './config/kompas.conf.json'
-if os.path.isfile(conf_dir):
-    with open(conf_dir) as conf_file:
-        config = json.load(conf_file)
-        regex = re.compile(config['url_regex'])
-        # print(config)
-        a = NewsGrabber(config)
-        # print(a.get_urls(1))
-        a.process(urls)
+# conf_dir = './config/kompas.conf.json'
+# if os.path.isfile(conf_dir):
+#     with open(conf_dir) as conf_file:
+#         config = json.load(conf_file)
+#         regex = re.compile(config['url_regex'])
+#         # print(config)
+#         a = NewsGrabber(config)
+#         # print(a.get_urls(1))
+#         a.process(urls)
