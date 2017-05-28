@@ -1,14 +1,11 @@
 import requests
 import re
-import os
-import json
 from multiprocessing import Queue
 from time import sleep
 from bs4 import BeautifulSoup, SoupStrainer
-# from dateutil.parser import parser as dateparse
 
 
-class LinkCollector:
+class LinkExtractor:
 
     _header = {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
@@ -88,16 +85,6 @@ class LinkCollector:
             depth += 1
 
         print('Found '+str(len(cls._links))+' links...')
-
-        file = open('detik_url2_dump.txt', 'w')
-
-        print('Writing to file...')
-        for link in cls._links:
-            subd = regex.search(link).group(1)
-            file.write(subd+" : "+link+'\n')
-
-        file.close()
-
         print('Operation finished...')
         return cls._links
 
@@ -126,13 +113,3 @@ class LinkCollector:
             raise ValueError('The supplied argument is not a requests.models.Response instance.')
         soup = BeautifulSoup(page.text, 'lxml-xml', parse_only=SoupStrainer('urlset'))
         return str(soup.find('urlset')) != 'None'
-
-start_url = "https://www.detik.com/sitemap.xml"
-conf_dir = './config/kompas.conf.json'
-if os.path.isfile(conf_dir):
-    with open(conf_dir) as conf_file:
-        config = json.load(conf_file)
-        # print(config)
-        a = LinkCollector(config)
-        # print(a.get_urls(1))
-        a.get_urls(0)
