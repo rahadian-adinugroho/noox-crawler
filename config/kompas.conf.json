@@ -18,6 +18,7 @@
     "article_regex_remove" : 
     [
     	"(?:\\(Baca.*?\\))",
-    	"(?:<div.+class=\"video\".*?<\\/div>)"
+    	"(?:<div.+class=\"video\".*?<\\/div>)",
+        "(?:<strong>Baca.*?>)"
     ]
 }

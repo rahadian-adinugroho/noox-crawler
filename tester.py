@@ -5,7 +5,7 @@ from modules.link_extractor import LinkExtractor
 from news_grabber import NewsGrabber
 # from dateutil.parser import parser as dateparse
 
-conf_dir = './config/kompas.conf.json'
+conf_dir = './config/detik.conf.json'
 if os.path.isfile(conf_dir):
     with open(conf_dir) as conf_file:
         config = json.load(conf_file)
