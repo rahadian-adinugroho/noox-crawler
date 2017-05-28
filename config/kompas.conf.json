@@ -11,7 +11,7 @@
     "article_attr_val": "read__content",
     "article_tag_replace": 
     {
-        "<p>" : "<br><br>",
+        "</p>" : "<br><br>",
         "<strong>" : "<strong>",
         "</strong>" : "</strong>"
     },

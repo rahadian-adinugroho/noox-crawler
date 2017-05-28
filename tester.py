@@ -23,7 +23,6 @@ if os.path.isfile(conf_dir):
                 subd = 'ERR'
             else:
                 subd = groups.group(1)
-
             file.write(subd+" : "+link+'\n')
-
+        file.write(str(links))
         file.close()

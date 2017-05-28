@@ -27,8 +27,7 @@ class LinkExtractor:
         if isinstance(start_url, str):
             cls._edges.put(start_url)
 
-    @classmethod
-    def get_urls(cls, crawl_depth_override=None):
+    def get_urls(cls, crawl_depth_override=None, max_link=None):
         """
         Begin crawling the target website and return the extracted links.
 
@@ -52,7 +51,7 @@ class LinkExtractor:
 
         depth = 0
         sleep(0.001)
-        while not cls._edges.empty():
+        while not cls._edges.empty() and (not max_link or len(cls._links) < max_link):
             print('Retrieving data from url...')
             edge = cls._edges.get(block=True)
             page = requests.get(edge, headers=cls._header)
@@ -88,7 +87,6 @@ class LinkExtractor:
         print('Operation finished...')
         return cls._links
 
-    @classmethod
     def _is_sitemap_index(cls, page):
         """
         Check whether the given Response object is a sitemap index or not.
@@ -101,7 +99,6 @@ class LinkExtractor:
         soup = BeautifulSoup(page.text, 'lxml-xml', parse_only=SoupStrainer('sitemapindex'))
         return str(soup.find('sitemapindex')) != 'None'
 
-    @classmethod
     def _is_sitemap(cls, page):
         """
         Check whether the given Response object is a sitemap or not.
