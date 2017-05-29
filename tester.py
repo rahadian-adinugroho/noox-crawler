@@ -16,7 +16,7 @@ if os.path.isfile(conf_dir):
         links = a.get_urls(max_link=50)
         grabber = NewsGrabber(config)
         news = grabber.process(links)
-
+        print('Scanned '+str(len(news))+' out of '+str(len(links))+' links...')
         file = open('detik_url2_dump.txt', 'w')
         print('Writing to file...')
         # for data in news:

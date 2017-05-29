@@ -68,7 +68,12 @@ class NewsGrabber:
 
             # after the buffer is full and the news is not in the database, retrieve the data
             for url in buffer_:
-                req_data = requests.get(url, self._header)
+                print(url)
+                try:
+                    req_data = requests.get(url, self._header)
+                except Exception as e:
+                    continue
+
                 soup = BeautifulSoup(req_data.text, 'lxml')
 
                 if "title_attr" in self._config and self._config["title_attr"] is not None:
@@ -76,11 +81,16 @@ class NewsGrabber:
                 else:
                     title = soup.find(self._config["title_tag"]).get_text()
 
-                if "date_attr" in self._config and self._config["date_attr"] is not None:
-                    date = soup.find(self._config["article_tag"], {self._config["date_attr"]: re.compile(self._config["date_attr_val"])}).get_text()
-                else:
-                    date = soup.find(self._config["article_tag"]).get_text()
-                sqlDate = self._date_parser(date)
+                try:
+                    if "date_attr" in self._config and self._config["date_attr"] is not None:
+                        date = soup.find(self._config["article_tag"], {self._config["date_attr"]: re.compile(self._config["date_attr_val"])}).get_text()
+                    else:
+                        date = soup.find(self._config["article_tag"]).get_text()
+                    sqlDate = self._date_parser(date)
+                    if sqlDate is None:
+                        continue
+                except Exception as e:
+                    continue
 
                 if "article_attr" in self._config:
                     article_parts = soup.findAll(self._config["article_tag"], {self._config["article_attr"]: re.compile(self._config["article_attr_val"])})
