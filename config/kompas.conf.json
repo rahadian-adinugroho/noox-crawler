@@ -19,6 +19,6 @@
     [
     	"(?:\\(Baca.*?\\))",
     	"(?:<div.+class=\"video\".*?<\\/div>)",
-        "(?:<strong>Baca.*?>)"
+        "(?:<strong>[\\s\\[]*Baca.*?>)"
     ]
 }
