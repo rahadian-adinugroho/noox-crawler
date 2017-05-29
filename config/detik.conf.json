@@ -9,6 +9,9 @@
     "article_tag": "div",
     "article_attr": "class",
     "article_attr_val": "detail_text",
+    "date_tag": "div",
+    "date_attr": "class",
+    "date_attr_val": "date",
     "article_tag_replace": 
     {
         "<br>": "<br>",

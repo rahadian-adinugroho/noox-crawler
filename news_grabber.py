@@ -5,7 +5,7 @@ import requests
 import pymysql
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-from dateutil.parser import parser as dateparse
+from dateutil.parser import parser as dp
 from collections import deque
 
 
@@ -76,6 +76,12 @@ class NewsGrabber:
                 else:
                     title = soup.find(self._config["title_tag"]).get_text()
 
+                if "date_attr" in self._config and self._config["date_attr"] is not None:
+                    date = soup.find(self._config["article_tag"], {self._config["date_attr"]: re.compile(self._config["date_attr_val"])}).get_text()
+                else:
+                    date = soup.find(self._config["article_tag"]).get_text()
+                sqlDate = self._date_parser(date)
+
                 if "article_attr" in self._config:
                     article_parts = soup.findAll(self._config["article_tag"], {self._config["article_attr"]: re.compile(self._config["article_attr_val"])})
                 else:
@@ -90,7 +96,7 @@ class NewsGrabber:
                     else:
                         article += self._multireplace(cleantext, spc_chars)
 
-                ret.append({'title': title, 'url': url, 'content': article})
+                ret.append({'title': title, 'url': url, 'pubtime': sqlDate, 'content': article})
                 # print({'title': title, 'text': article})
         return ret
 
@@ -107,6 +113,44 @@ class NewsGrabber:
         sql = sql.format(in_p)
         cursor.execute(sql)
         return [row[0] for row in cursor.fetchall()]
+
+    def _date_parser(self, date):
+        """
+        Attempt to parse a date from a given string.
+        """
+        if not isinstance(date, str):
+            raise TypeError('date argument is expected to be a string')
+        month = {
+            'januari': 'january',
+            'februari': 'february',
+            'maret': 'march',
+            'mei': 'may',
+            'juni': 'june',
+            'juli': 'july',
+            'agustus': 'august',
+            'oktober': 'october',
+            'nopember': 'november',
+            'desember': 'december'
+        }
+        day = {
+            'senin': 'monday',
+            'selasa': 'tuesday',
+            'rabu': 'wednesday',
+            'kamis': 'thursday',
+            'jumat': 'friday',
+            'sabtu': 'saturday',
+            'minggu': 'sunday'
+        }
+        repl = {}
+        repl.update(month)
+        repl.update(day)
+        stdDate = self._multireplace(date.lower(), repl)
+        try:
+            parser = dp()
+            dateObj = parser.parse(stdDate.upper())
+            return dateObj.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception as e:
+            return None
 
     def _multireplace(self, string, replacements):
         """
