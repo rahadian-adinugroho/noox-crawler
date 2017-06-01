@@ -205,7 +205,7 @@ class NewsGrabber:
 
         try:
             parser = dp()
-            dateObj = parser.parse(date)
+            dateObj = parser.parse(date, dayfirst=True)
             return dateObj.strftime("%Y-%m-%d %H:%M:%S")
         except Exception as e:
             return None
