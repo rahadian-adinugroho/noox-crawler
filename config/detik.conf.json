@@ -1,6 +1,7 @@
 {
     "sitename": "detik",
     "url": "http://detik.com",
+    "sitemapindex_regex": "",
     "url_regex": "^http.*\/([a-zA-Z]*)\\.(?:.*\\/read\\/.*|.*\\/d-[0-9]*\\/.*|.*\\/berita\\/.*)$",
     "crawl_depth": 1,
     "title_tag": "h1",

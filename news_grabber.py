@@ -165,10 +165,13 @@ class NewsGrabber:
             'jul': '07',
             'aug': '08',
             'ags': '08',
+            'agu': '08',
             'sep': '09',
             'oct': '10',
+            'okt': '10',
             'nov': '11',
-            'dec': '12'
+            'dec': '12',
+            'des': '12'
         }
         bulan = {
             'januari': '01',
@@ -233,19 +236,3 @@ class NewsGrabber:
         """
         url_parts = urlparse(url).hostname.split('.')
         return url_parts[1 if len(url_parts) == 3 else 0]
-
-# urls = [
-#         'https://inet.detik.com/consumer/d-3496637/snapdragon-660-dan-630-jadi-jagoan-baru-qualcomm',
-#         'http://nasional.kompas.com/read/2017/04/27/11333611/ada.setya.novanto.di.balik.proyek.e-ktp.pengusaha.ini.tolak.ikut.lelang',
-#         'https://news.detik.com/berita/3487026/ini-nama-nama-anggota-dpr-inisiator-angket-kpk'
-#     ]
-
-# conf_dir = './config/kompas.conf.json'
-# if os.path.isfile(conf_dir):
-#     with open(conf_dir) as conf_file:
-#         config = json.load(conf_file)
-#         regex = re.compile(config['url_regex'])
-#         # print(config)
-#         a = NewsGrabber(config)
-#         # print(a.get_urls(1))
-#         a.process(urls)

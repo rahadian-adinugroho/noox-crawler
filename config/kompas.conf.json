@@ -1,6 +1,7 @@
 {
     "sitename": "kompas",
     "url": "http://kompas.com/sitemap.php",
+    "sitemapindex_regex": "",
     "url_regex": "^http.*\\/([a-zA-Z]*)\\.(?:kompas\\.com\\/read\\/.+)$",
     "crawl_depth": 0,
     "title_tag": ["h1"],
