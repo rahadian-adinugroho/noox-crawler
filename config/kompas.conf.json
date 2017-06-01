@@ -3,12 +3,17 @@
     "url": "http://kompas.com/sitemap.php",
     "url_regex": "^http.*\\/([a-zA-Z]*)\\.(?:kompas\\.com\\/read\\/.+)$",
     "crawl_depth": 0,
-    "title_tag": "h1",
+    "title_tag": ["h1"],
     "title_attr": "class",
     "title_attr_val": "read__title",
     "article_tag": "div",
     "article_attr": "class",
     "article_attr_val": "read__content",
+    "date_tag": "div",
+    "date_attr": "class",
+    "date_attr_val": "read__time",
+    "date_regex": "",
+    "normalize_date": false,
     "article_tag_replace": 
     {
         "</p>" : "<br><br>",

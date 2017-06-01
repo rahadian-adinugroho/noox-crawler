@@ -8,10 +8,12 @@
     "title_attr_val": null,
     "article_tag": "div",
     "article_attr": "class",
-    "article_attr_val": "detail_text",
-    "date_tag": "div",
+    "article_attr_val": "detail_text|text_detail",
+    "date_tag": ["div", "span"],
     "date_attr": "class",
     "date_attr_val": "date",
+    "date_regex": "",
+    "normalize_date": true,
     "article_tag_replace": 
     {
         "<br>": "<br>",

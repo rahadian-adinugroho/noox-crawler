@@ -3,7 +3,7 @@ import json
 import re
 import requests
 import pymysql
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, SoupStrainer
 from urllib.parse import urlparse
 from dateutil.parser import parser as dp
 from collections import deque
@@ -74,22 +74,31 @@ class NewsGrabber:
                 except Exception as e:
                     continue
 
-                soup = BeautifulSoup(req_data.text, 'lxml')
+                tags = []
+                tags.append(self._config["title_tag"])
+                tags.append(self._config["date_tag"])
+                tags.append(self._config["article_tag"])
+                soup = BeautifulSoup(req_data.text, 'lxml', parse_only=SoupStrainer(tags))
 
                 if "title_attr" in self._config and self._config["title_attr"] is not None:
                     title = soup.find(self._config["title_tag"], {self._config["title_attr"]: re.compile(self._config["title_attr_val"])}).get_text()
                 else:
                     title = soup.find(self._config["title_tag"]).get_text()
+                if title is None or len(title) < 5:
+                        print('url "{0}" title is "{1}"'.format(url, title))
+                        continue
 
                 try:
                     if "date_attr" in self._config and self._config["date_attr"] is not None:
-                        date = soup.find(self._config["article_tag"], {self._config["date_attr"]: re.compile(self._config["date_attr_val"])}).get_text()
+                        date = soup.find(self._config["date_tag"], {self._config["date_attr"]: re.compile(self._config["date_attr_val"])}).get_text()
                     else:
-                        date = soup.find(self._config["article_tag"]).get_text()
+                        date = soup.find(self._config["date_tag"]).get_text()
                     sqlDate = self._date_parser(date)
                     if sqlDate is None:
+                        print('url "{0}" date is "{1}"'.format(url, sqlDate))
                         continue
                 except Exception as e:
+                    print('unable to scan "{0}" because "{1}"'.format(url, str(e)))
                     continue
 
                 if "article_attr" in self._config:
@@ -105,7 +114,10 @@ class NewsGrabber:
                         article += self._multireplace(cleantext, self._config["article_tag_replace"])
                     else:
                         article += self._multireplace(cleantext, spc_chars)
-
+                if article is None or len(article) < 5:
+                    print('url "{0}" content is "{1}"'.format(url, article))
+                    continue
+                # print(article)
                 ret.append({'title': title, 'url': url, 'pubtime': sqlDate, 'content': article})
                 # print({'title': title, 'text': article})
         return ret
@@ -131,33 +143,66 @@ class NewsGrabber:
         if not isinstance(date, str):
             raise TypeError('date argument is expected to be a string')
         month = {
-            'januari': 'january',
-            'februari': 'february',
-            'maret': 'march',
-            'mei': 'may',
-            'juni': 'june',
-            'juli': 'july',
-            'agustus': 'august',
-            'oktober': 'october',
-            'nopember': 'november',
-            'desember': 'december'
+            'january': '01',
+            'february': '02',
+            'march': '03',
+            'april': '04',
+            'may': '05',
+            'june': '06',
+            'july': '07',
+            'august': '08',
+            'september': '09',
+            'october': '10',
+            'november': '11',
+            'december': '12'
         }
-        day = {
-            'senin': 'monday',
-            'selasa': 'tuesday',
-            'rabu': 'wednesday',
-            'kamis': 'thursday',
-            'jumat': 'friday',
-            'sabtu': 'saturday',
-            'minggu': 'sunday'
+        shortMonth = {
+            'jan': '01',
+            'feb': '02',
+            'mar': '03',
+            'apr': '04',
+            'jun': '06',
+            'jul': '07',
+            'aug': '08',
+            'ags': '08',
+            'sep': '09',
+            'oct': '10',
+            'nov': '11',
+            'dec': '12'
         }
-        repl = {}
-        repl.update(month)
-        repl.update(day)
-        stdDate = self._multireplace(date.lower(), repl)
+        bulan = {
+            'januari': '01',
+            'februari': '02',
+            'maret': '03',
+            'april': '04',
+            'mei': '05',
+            'juni': '06',
+            'juli': '07',
+            'agustus': '08',
+            'september': '09',
+            'oktober': '10',
+            'nopember': '11',
+            'desember': '12'
+        }
+        if self._config["normalize_date"] is True:
+            repl = {}
+            repl.update(month)
+            repl.update(shortMonth)
+            repl.update(bulan)
+            date = self._multireplace(date.lower(), repl)
+        if "date_regex" in self._config and len(self._config["date_regex"]) > 0:
+            reg = re.compile(self._config["date_regex"])
+            try:
+                matches = reg.search(date).groupdict()
+                date = '{y}/{m}/{d} {h}:{i}'.format_map(matches)
+            except Exception as e:
+                date = re.sub(r'[^0-9:\s\/\-]', '', date)
+        else:
+            date = re.sub(r'[^0-9:\s\/\-]', '', date)
+
         try:
             parser = dp()
-            dateObj = parser.parse(stdDate.upper())
+            dateObj = parser.parse(date)
             return dateObj.strftime("%Y-%m-%d %H:%M:%S")
         except Exception as e:
             return None
