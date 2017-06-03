@@ -107,7 +107,13 @@ class NewsGrabber:
                 if "article_bs_remove" in self._config and len(self._config["article_bs_remove"]) > 0:
                     for i, item in enumerate(article_parts):
                         for def_ in self._config["article_bs_remove"]:
-                            for el in article_parts[i].find_all(def_['tag'], {def_['attr']: re.compile(def_['attr_val'])}):
+                            if 'attr' in def_:
+                                if len(def_['attr_val']) < 1:
+                                    raise ValueError('attr_val is empty')
+                                elements = article_parts[i].find_all(def_['tag'], {def_['attr']: re.compile(def_['attr_val'])})
+                            else:
+                                elements = article_parts[i].find_all(def_['tag'])
+                            for el in elements:
                                 el.decompose()
 
                 article = ''
@@ -118,7 +124,7 @@ class NewsGrabber:
                         article += self._multireplace(cleantext, self._config["article_tag_replace"])
                     else:
                         article += self._multireplace(cleantext, spc_chars)
-                if article is None or len(article) < 5:
+                if article is None or len(article) < 200:
                     print('url "{0}" content is "{1}"'.format(url, article))
                     continue
                 # print(article)
