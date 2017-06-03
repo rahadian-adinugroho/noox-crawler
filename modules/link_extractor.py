@@ -74,7 +74,6 @@ class LinkExtractor:
                     for loc in BeautifulSoup(page.text, 'lxml-xml', parse_only=SoupStrainer('loc')):
                         url = loc.get_text().strip()
                         if regex.match(url) and url not in self._links:
-                            print(url)
                             self._links.append(url)
                             if depth < max_depth:
                                 self._edges.put(url, block=True)
