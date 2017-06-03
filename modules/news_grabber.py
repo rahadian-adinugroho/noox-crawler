@@ -106,15 +106,23 @@ class NewsGrabber:
                     else:
                         author = soup.find(self._config["author_tag"]).get_text()
                     if author is None or len(author) < 5:
-                        print('url "{0}" author is "{1}"'.format(url, author))
-                        continue
+                        if self._config['allow_default_author']:
+                            print('Using default author name...')
+                            author = self._config['default_author_name']
+                        else:
+                            print('url "{0}" author is "{1}"'.format(url, author))
+                            continue
                     if 'author_regex' in self._config and len(self._config['author_regex']) > 0:
                         author_regex = re.compile(self._config['author_regex'])
                         author = author_regex.search(author).group(1)
                         author = author.title()
                 except Exception as e:
-                    print('unable to scan "{0}" because author is: "{1}"'.format(url, str(e)))
-                    continue
+                    if self._config['allow_default_author']:
+                        print('Using default author name...')
+                        author = self._config['default_author_name']
+                    else:
+                        print('unable to scan "{0}" because author is: "{1}"'.format(url, str(e)))
+                        continue
 
                 if "article_attr" in self._config:
                     article_parts = soup.find_all(self._config["article_tag"], {self._config["article_attr"]: re.compile(self._config["article_attr_val"])})

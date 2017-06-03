@@ -11,6 +11,8 @@
     "author_attr": "class",
     "author_attr_val": "read__author",
     "author_regex": "",
+    "allow_default_author": false,
+    "default_author_name": null,
     "article_tag": "div",
     "article_attr": "class",
     "article_attr_val": "read__content",
