@@ -1,6 +1,7 @@
 import re
 import requests
 import pymysql
+import hashlib
 from bs4 import BeautifulSoup, SoupStrainer
 from urllib.parse import urlparse
 from dateutil.parser import parser as dp
@@ -40,7 +41,7 @@ class NewsGrabber:
             regex += '|'+r'(<\/?(\s|\S)*?>)'
         self.__compiled_regex = re.compile(regex)
 
-        self.__db = pymysql.connect('localhost', 'root', '', 'nooxdb')
+        self.__db = pymysql.connect('localhost', 'root', '', 'nooxdbapi')
 
     def process(self, url_list, export_to='DB'):
         # check if url_list is an instance of list
@@ -54,7 +55,7 @@ class NewsGrabber:
             buffer_ = []
 
             # we need to check whether the news article is already in database or not
-            while urls and len(buffer_) < 25:
+            while urls and len(buffer_) < 20:
                 # fill the buffer to 10 (pass by reference)
                 self._fill_buffer(buffer_, urls)
 
@@ -99,6 +100,22 @@ class NewsGrabber:
                     print('unable to scan "{0}" because "{1}"'.format(url, str(e)))
                     continue
 
+                try:
+                    if "author_attr" in self._config and self._config["author_attr"] is not None:
+                        author = soup.find(self._config["author_tag"], {self._config["author_attr"]: re.compile(self._config["author_attr_val"])}).get_text()
+                    else:
+                        author = soup.find(self._config["author_tag"]).get_text()
+                    if author is None or len(author) < 5:
+                        print('url "{0}" author is "{1}"'.format(url, author))
+                        continue
+                    if 'author_regex' in self._config and len(self._config['author_regex']) > 0:
+                        author_regex = re.compile(self._config['author_regex'])
+                        author = author_regex.search(author).group(1)
+                        author = author.title()
+                except Exception as e:
+                    print('unable to scan "{0}" because author is: "{1}"'.format(url, str(e)))
+                    continue
+
                 if "article_attr" in self._config:
                     article_parts = soup.find_all(self._config["article_tag"], {self._config["article_attr"]: re.compile(self._config["article_attr_val"])})
                 else:
@@ -129,23 +146,29 @@ class NewsGrabber:
                     print('url "{0}" content is "{1}"'.format(url, article))
                     continue
                 # print(article)
-                ret.append({'title': title, 'url': url, 'pubtime': sqlDate, 'content': article})
+                ret.append({'title': title, 'url': url, 'author': author, 'pubtime': sqlDate, 'content': article})
                 # print({'title': title, 'text': article})
         return ret
 
     def _fill_buffer(self, buffer_, urls):
-        while urls and len(buffer_) < 25:
+        while urls and len(buffer_) < 20:
             url = urls.popleft()
             if self._config['sitename'] == self._get_domain_name(url):
                 buffer_ += [url]
 
     def _check_with_db(self, buffer_):
         cursor = self.__db.cursor()
-        sql = 'SELECT `url` FROM `news` WHERE `url` IN ({0})'
-        in_p = ', '.join(map(lambda x: "'"+x+"'", buffer_))
+        sql = 'SELECT `url` FROM `news` WHERE `url_hash` IN ({0})'
+        in_p = ', '.join(map(lambda x: "'" + self.__get_md5(x) + "'", buffer_))
         sql = sql.format(in_p)
+        print(sql)
         cursor.execute(sql)
         return [row[0] for row in cursor.fetchall()]
+
+    def __get_md5(self, string: str):
+        m = hashlib.md5()
+        m.update(string.encode('utf8'))
+        return m.hexdigest()
 
     def _date_parser(self, date):
         """

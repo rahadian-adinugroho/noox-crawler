@@ -1,4 +1,5 @@
 import pymysql
+import hashlib
 from output_providers import BaseProvider
 
 
@@ -43,8 +44,8 @@ class NooxSqlProvider(BaseProvider):
             raise ValueError('No data to output!')
 
         cursor = self._db.cursor()
-        baseSql = 'INSERT INTO `news` (`title`, `source_id`, `cat_id`, `url`, `author`, `pubtime`, `content`) VALUES {0};'
-        in_p = ', '.join(map(lambda x: "('"+self._db.escape_string(x['title'])+"', 3, 1, '"+self._db.escape_string(x['url'])+"', 'anon', '"+self._db.escape_string(x['pubtime'])+"', '"+self._db.escape_string(x['content'])+"')", data))
+        baseSql = 'INSERT INTO `news` (`title`, `source_id`, `cat_id`, `url`, `url_hash`, `author`, `pubtime`, `content`) VALUES {0};'
+        in_p = ', '.join(map(lambda x: "('"+self._db.escape_string(x['title'])+"', 3, 1, '"+self._db.escape_string(x['url'])+"', '"+self._db.escape_string(self._get_md5(x['url']))+"', '"+self._db.escape_string(x['author'])+"', '"+self._db.escape_string(x['pubtime'])+"', '"+self._db.escape_string(x['content'])+"')", data))
         sql = baseSql.format(in_p)
         # print(sql)
         cursor.execute(sql)
@@ -52,12 +53,7 @@ class NooxSqlProvider(BaseProvider):
         self.lastinsertids = [i for i in range(cursor.lastrowid, cursor.lastrowid + len(data))]
         return self.lastinsertids
 
-# if __name__ == '__main__':
-#     print('Subclass:', issubclass(NooxSqlProvider,
-#                                   BaseProvider))
-#     print('Instance:', isinstance(NooxSqlProvider(config={'db_url': 'localhost', 'db_username': 'root', 'db_password': '', 'db_name': 'nooxdb'}),
-#                                   BaseProvider))
-#     b = NooxSqlProvider({'db_url': 'localhost', 'db_username': 'root', 'db_password': '', 'db_name': 'nooxdb'})
-#     for sc in BaseProvider.__subclasses__():
-#         print(sc.__name__)
-#     print(b.config)
+    def _get_md5(self, string: str):
+        m = hashlib.md5()
+        m.update(string.encode('utf8'))
+        return m.hexdigest()

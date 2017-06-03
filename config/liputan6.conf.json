@@ -7,6 +7,10 @@
     "title_tag": ["h1"],
     "title_attr": "class",
     "title_attr_val": "read-page--header--title",
+    "author_tag": "span",
+    "author_attr": "class",
+    "author_attr_val": "read-page--header--author__name",
+    "author_regex": "",
     "article_tag": "div",
     "article_attr": "class",
     "article_attr_val": "article-content-body__item-content",
@@ -15,7 +19,13 @@
     "date_attr_val": "read-page--header--author__datetime",
     "date_regex": "",
     "normalize_date": true,
-    "article_bs_remove": [],
+    "article_bs_remove": [
+        {
+            "tag": "div",
+            "attr": "class",
+            "attr_val": "baca-juga"
+        }
+    ],
     "article_tag_replace": 
     {
         "<b>" : "<b>",
