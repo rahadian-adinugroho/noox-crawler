@@ -33,5 +33,27 @@
     	"(?:\\(Baca.*?\\))",
     	"(?:<div.+class=\"video\".*?<\\/div>)",
         "(?:<strong>[\\s\\[]*Baca.*?>)"
-    ]
+    ],
+    "noox_config":
+    {
+        "db_sitename": "Kompas",
+        "allow_no_image": true,
+        "url_regex": "^(?:http|https)://([a-zA-Z]*)\\.kompas\\.com\\/read\\/.+$",
+        "skip_when_no_category": true,
+        "allow_default_category": false,
+        "default_category": null,
+        "categories":
+        {
+            "nasional": "national",
+            "regional": "national",
+            "megapolitan": "national",
+            "bisniskeuangan": "business",
+            "bola": "sport",
+            "olahraga": "sport",
+            "tekno": "technology",
+            "lifestyle": "lifestyle",
+            "travel": "lifestyle",
+            "otomotif": "automotive"
+        }
+    }
 }

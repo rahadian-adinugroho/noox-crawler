@@ -1,9 +1,9 @@
 {
     "sitename": "liputan6",
-    "url": "http://www.liputan6.com/sitemap.xml",
+    "url": "http://www.liputan6.com",
     "sitemapindex_regex": "^.*web.*sitemap.*\\.xml$",
     "url_regex": "^(?:http|https)://([a-zA-Z]*)\\.liputan6\\.com\\/read\\/.+$",
-    "crawl_depth": 0,
+    "crawl_depth": 1,
     "title_tag": ["h1"],
     "title_attr": "class",
     "title_attr_val": "read-page--header--title",
@@ -45,5 +45,24 @@
         "(?:\\(Baca.*?\\))",
         "(?:<div.+class=\"video\".*?<\\/div>)",
         "(?:<strong>[\\s\\[]*Baca.*?>)"
-    ]
+    ],
+    "noox_config":
+    {
+        "db_sitename": "Liputan 6",
+        "allow_no_image": true,
+        "url_regex": "^(?:http|https)://([a-zA-Z]*)\\.liputan6\\.com\\/read\\/.+$",
+        "skip_when_no_category": true,
+        "allow_default_category": false,
+        "default_category": null,
+        "categories":
+        {
+            "news": "national",
+            "bisnis": "business",
+            "health": "health",
+            "bola": "sport",
+            "tekno": "technology",
+            "lifestyle": "lifestyle",
+            "otomotif": "automotive"
+        }
+    }
 }

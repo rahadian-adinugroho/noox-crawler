@@ -43,5 +43,26 @@
     [
         "(?:<table.*?<\\/table>)",
         "(?:\\[.+?Video.*?\\])"
-    ]
+    ],
+    "noox_config":
+    {
+        "db_sitename": "Detik",
+        "allow_no_image": true,
+        "url_regex": "^(?:http|https)://([a-zA-Z]*)\\.detik\\.com(?!\\/infografis)(?!\\/suara)(?:.{,15}\\/read|.{,25}d-[0-9]+|.{25}\\/berita)\\/.+$",
+        "skip_when_no_category": false,
+        "allow_default_category": false,
+        "default_category": null,
+        "categories":
+        {
+            "news": "national",
+            "finance": "business",
+            "health": "health",
+            "sport": "sport",
+            "inet": "technology",
+            "food": "lifestyle",
+            "wolipop": "lifestyle",
+            "hot": "lifestyle",
+            "oto": "automotive"
+        }
+    }
 }
