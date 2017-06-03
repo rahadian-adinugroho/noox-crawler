@@ -1,5 +1,4 @@
 from output_providers import BaseProvider
-import os
 import io
 import json
 

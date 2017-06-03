@@ -2,7 +2,7 @@
     "sitename": "liputan6",
     "url": "http://www.liputan6.com/sitemap.xml",
     "sitemapindex_regex": "^.*web.*sitemap.*\\.xml$",
-    "url_regex": "^http.*\\/([a-zA-Z]*)\\.(?:liputan6\\.com\\/read\\/.+)$",
+    "url_regex": "^(?:http|https)://([a-zA-Z]*)\\.liputan6\\.com\\/read\\/.+$",
     "crawl_depth": 0,
     "title_tag": ["h1"],
     "title_attr": "class",
@@ -15,6 +15,7 @@
     "date_attr_val": "read-page--header--author__datetime",
     "date_regex": "",
     "normalize_date": true,
+    "article_bs_remove": [],
     "article_tag_replace": 
     {
         "<b>" : "<b>",

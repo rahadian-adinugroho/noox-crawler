@@ -1,8 +1,8 @@
 {
     "sitename": "detik",
-    "url": "http://detik.com",
+    "url": "http://hot.detik.com",
     "sitemapindex_regex": "",
-    "url_regex": "^http.*\/([a-zA-Z]*)\\.(?:.*\\/read\\/.*|.*\\/d-[0-9]*\\/.*|.*\\/berita\\/.*)$",
+    "url_regex": "^(?:http|https)://([a-zA-Z]*)\\.detik\\.com(?!\\/infografis)(?!\\/suara)(?:.{,15}\\/read|.{,25}d-[0-9]+|.{25}\\/berita)\\/.+$",
     "crawl_depth": 1,
     "title_tag": "h1",
     "title_attr": null,
@@ -15,6 +15,13 @@
     "date_attr_val": "date",
     "date_regex": "",
     "normalize_date": true,
+    "article_bs_remove": [
+        {
+            "tag": "div",
+            "attr": "class",
+            "attr_val": "box_hl wpgal |boxlr mt15"
+        }
+    ],
     "article_tag_replace": 
     {
         "<br>": "<br>",

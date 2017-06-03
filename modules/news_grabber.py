@@ -100,9 +100,15 @@ class NewsGrabber:
                     continue
 
                 if "article_attr" in self._config:
-                    article_parts = soup.findAll(self._config["article_tag"], {self._config["article_attr"]: re.compile(self._config["article_attr_val"])})
+                    article_parts = soup.find_all(self._config["article_tag"], {self._config["article_attr"]: re.compile(self._config["article_attr_val"])})
                 else:
-                    article_parts = soup.findAll(self._config["article_tag"])
+                    article_parts = soup.find_all(self._config["article_tag"])
+
+                if "article_bs_remove" in self._config and len(self._config["article_bs_remove"]) > 0:
+                    for i, item in enumerate(article_parts):
+                        for def_ in self._config["article_bs_remove"]:
+                            for el in article_parts[i].find_all(def_['tag'], {def_['attr']: re.compile(def_['attr_val'])}):
+                                el.decompose()
 
                 article = ''
                 for part in article_parts:
