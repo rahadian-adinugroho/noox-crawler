@@ -124,6 +124,7 @@ class NewsGrabber:
                         article += self._multireplace(cleantext, self._config["article_tag_replace"])
                     else:
                         article += self._multireplace(cleantext, spc_chars)
+                article = re.sub(r"(?:<br>|<br\/>){3,}", '<br><br>', article)
                 if article is None or len(article) < 200:
                     print('url "{0}" content is "{1}"'.format(url, article))
                     continue

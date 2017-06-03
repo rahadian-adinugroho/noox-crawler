@@ -62,7 +62,7 @@ class LinkExtractor:
                     sitemapIndexRegex = re.compile(self._config['sitemapindex_regex'])
                 else:
                     sitemapIndexRegex = re.compile('.*')
-                for loc in BeautifulSoup(page.text.encode('utf-8').decode('utf-8'), 'lxml-xml', parse_only=SoupStrainer('loc')):
+                for loc in BeautifulSoup(page.text, 'lxml-xml', parse_only=SoupStrainer('loc')):
                     url = loc.get_text().strip()
                     if sitemapIndexRegex.match(url):
                         self._edges.put(url, block=True)
