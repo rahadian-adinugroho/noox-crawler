@@ -24,9 +24,8 @@ class NewsGrabber:
     # remove script, style, and another tag.
     _base_regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
 
-    def __init__(self, config, export_to='DB'):
+    def __init__(self, config):
         self._config = config
-        self.__export_to = export_to
 
         regex = self._base_regex
         # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
@@ -43,7 +42,7 @@ class NewsGrabber:
 
         self.__db = pymysql.connect('localhost', 'root', '', 'nooxdbapi')
 
-    def process(self, url_list, export_to='DB'):
+    def process(self, url_list):
         # check if url_list is an instance of list
         if not isinstance(url_list, list):
             raise TypeError('url_list is expected to be an instance of list')
@@ -84,8 +83,8 @@ class NewsGrabber:
                 else:
                     title = soup.find(self._config["title_tag"]).get_text()
                 if title is None or len(title) < 5:
-                        print('url "{0}" title is "{1}"'.format(url, title))
-                        continue
+                    print('url "{0}" title is "{1}"'.format(url, title))
+                    continue
 
                 try:
                     if "date_attr" in self._config and self._config["date_attr"] is not None:
