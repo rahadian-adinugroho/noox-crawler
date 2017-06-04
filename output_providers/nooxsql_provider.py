@@ -1,6 +1,8 @@
 import pymysql
 import hashlib
 import re
+import requests
+import os
 from output_providers import BaseProvider
 
 
@@ -62,6 +64,7 @@ class NooxSqlProvider(BaseProvider):
         cursor.execute(sql)
         self._db.commit()
         self.lastinsertids = [i for i in range(cursor.lastrowid, cursor.lastrowid + len(filteredData))]
+        self._download_news_images([(id, filteredData[i]['img_url']) for i, id in enumerate(self.lastinsertids)])
         return self.lastinsertids
 
     def _get_md5(self, string: str):
@@ -100,6 +103,17 @@ class NooxSqlProvider(BaseProvider):
     def _format_sql(self, item):
         category_id = self._get_category_id(item['url'])
         if category_id is not None:
-            return "('"+self._db.escape_string(item['title'])+"', '"+str(self._source_id)+"', '"+str(category_id)+"', '"+self._db.escape_string(item['url'])+"', '"+self._get_md5(item['url'])+"', '"+self._db.escape_string(item['author'])+"', '"+self._db.escape_string(item['pubtime'])+"', '"+self._db.escape_string(item['content'])+"')" 
+            return "('"+self._db.escape_string(item['title'])+"', '"+str(self._source_id)+"', '"+str(category_id)+"', '"+self._db.escape_string(item['url'])+"', '"+self._get_md5(item['url'])+"', '"+self._db.escape_string(item['author'])+"', '"+self._db.escape_string(item['pubtime'])+"', '"+self._db.escape_string(item['content'])+"')"
         else:
             raise Exception('No categories reached _format_sql')
+
+    def _download_news_images(self, items: list):
+        for item in items:
+            with open(self.noox_config['img_dir']+str(item[0])+'.jpg', 'wb') as file:
+                try:
+                    img = requests.get(item[1])
+                    file.write(img.content)
+                    file.close()
+                except Exception as e:
+                    print('Unable to download "{0}" cause: {1}'.format(item[1], str(e)))
+                    os.unlink(file.name)

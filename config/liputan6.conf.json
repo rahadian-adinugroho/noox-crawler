@@ -58,6 +58,7 @@
     {
         "db_sitename": "Liputan 6",
         "allow_no_image": true,
+        "img_dir": "~/Proyek/noox-backend/public/img/news/",
         "url_regex": "^(?:http|https)://([a-zA-Z]*)\\.liputan6\\.com\\/read\\/.+$",
         "skip_when_no_category": true,
         "allow_default_category": false,
