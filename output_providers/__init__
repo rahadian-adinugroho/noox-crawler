@@ -1,2 +1,0 @@
-from base_provider import base_provider
-from nooxsql_provider import NooxSqlProvider

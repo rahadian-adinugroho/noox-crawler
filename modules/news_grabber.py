@@ -40,9 +40,7 @@ class NewsGrabber:
             regex += '|'+r'(<\/?(\s|\S)*?>)'
         self.__compiled_regex = re.compile(regex)
 
-        self.__db = pymysql.connect('localhost', 'root', '', 'nooxdbapi')
-
-    def process(self, url_list):
+    def process(self, url_list, url_check_callback=None):
         # check if url_list is an instance of list
         if not isinstance(url_list, list):
             raise TypeError('url_list is expected to be an instance of list')
@@ -58,11 +56,11 @@ class NewsGrabber:
                 # fill the buffer to 10 (pass by reference)
                 self._fill_buffer(buffer_, urls)
 
-                # retrieve urls already in database
-                inDB = self._check_with_db(buffer_)
-
-                # we select url that is not in database yet
-                buffer_ = [url for url in buffer_ if url not in inDB]
+                if callable(url_check_callback):
+                    # retrieve urls already in database
+                    toRemove = url_check_callback(buffer_)
+                    # we select url that is not in database yet
+                    buffer_ = [url for url in buffer_ if url not in toRemove]
 
             # after the buffer is full and the news is not in the database, retrieve the data
             for url in buffer_:
@@ -76,6 +74,7 @@ class NewsGrabber:
                 tags.append(self._config["title_tag"])
                 tags.append(self._config["date_tag"])
                 tags.append(self._config["article_tag"])
+                tags.append(self._config["author_tag"])
                 soup = BeautifulSoup(req_data.text, 'lxml', parse_only=SoupStrainer(tags))
 
                 if "title_attr" in self._config and self._config["title_attr"] is not None:
@@ -162,20 +161,6 @@ class NewsGrabber:
             url = urls.popleft()
             if self._config['sitename'] == self._get_domain_name(url):
                 buffer_ += [url]
-
-    def _check_with_db(self, buffer_):
-        cursor = self.__db.cursor()
-        sql = 'SELECT `url` FROM `news` WHERE `url_hash` IN ({0})'
-        in_p = ', '.join(map(lambda x: "'" + self.__get_md5(x) + "'", buffer_))
-        sql = sql.format(in_p)
-        print(sql)
-        cursor.execute(sql)
-        return [row[0] for row in cursor.fetchall()]
-
-    def __get_md5(self, string: str):
-        m = hashlib.md5()
-        m.update(string.encode('utf8'))
-        return m.hexdigest()
 
     def _date_parser(self, date):
         """
