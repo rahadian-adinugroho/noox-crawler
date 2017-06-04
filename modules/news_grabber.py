@@ -75,6 +75,9 @@ class NewsGrabber:
                 tags.append(self._config["date_tag"])
                 tags.append(self._config["article_tag"])
                 tags.append(self._config["author_tag"])
+                if not (self._config['img_wrapper_tag'] is None or len(self._config['img_wrapper_tag']) < 1):
+                    tags.append(self._config['img_wrapper_tag'])
+                tags.append("img")
                 soup = BeautifulSoup(req_data.text, 'lxml', parse_only=SoupStrainer(tags))
 
                 if "title_attr" in self._config and self._config["title_attr"] is not None:
@@ -96,6 +99,47 @@ class NewsGrabber:
                         continue
                 except Exception as e:
                     print('unable to scan "{0}" because "{1}"'.format(url, str(e)))
+                    continue
+
+                # if prioritize wrapper or img_tag_attr is empty or null, use wrapper immediately
+                if self._config['img_tag_src_attr'] is not None and len(self._config['img_tag_src_attr']) > 0:
+                    src_attr = self._config['img_tag_src_attr']
+                else:
+                    src_attr = 'src'
+
+                img_url = None
+                if self._config['prioritize_wrapper'] or (self._config['img_tag_attr'] is None or len(self._config['img_tag_attr']) < 1):
+                    if "img_wrapper_attr" in self._config and self._config["img_wrapper_attr"] is not None:
+                        wrapper = soup.find(self._config["img_wrapper_tag"], {self._config["img_wrapper_attr"]: re.compile(self._config["img_wrapper_attr_val"])})
+                    else:
+                        wrapper = soup.find(self._config["img_wrapper_tag"])
+
+                    if wrapper is not None:
+                        img_tags = wrapper.find_all('img')
+
+                    if img_tags is not None:
+                        for img_tag in img_tags:
+                            if img_tag.has_attr(src_attr):
+                                img_url = img_tag[src_attr]
+                                break
+                else:
+                    img_tag = soup.find('img', {self._config["img_tag_attr"]: re.compile(self._config["img_tag_attr_val"])})
+                    if img_tag is not None and img_tag.has_attr(src_attr):
+                        img_url = img_tag[src_attr]
+                if img_url is None or len(img_url) < 5:
+                    if self._config['allow_no_image']:
+                        print('No img_url for {0}'.format(url))
+                        img_url = None
+                    else:
+                        print('Skipping to scan "{0}" because no img_url'.format(url))
+                        continue
+
+                if "title_attr" in self._config and self._config["title_attr"] is not None:
+                    title = soup.find(self._config["title_tag"], {self._config["title_attr"]: re.compile(self._config["title_attr_val"])}).get_text()
+                else:
+                    title = soup.find(self._config["title_tag"]).get_text()
+                if title is None or len(title) < 5:
+                    print('url "{0}" title is "{1}"'.format(url, title))
                     continue
 
                 try:
@@ -152,7 +196,7 @@ class NewsGrabber:
                     print('url "{0}" content is "{1}"'.format(url, article))
                     continue
                 # print(article)
-                ret.append({'title': title, 'url': url, 'author': author, 'pubtime': sqlDate, 'content': article})
+                ret.append({'title': title, 'url': url, 'author': author, 'pubtime': sqlDate, 'content': article, 'img_url': img_url})
                 # print({'title': title, 'text': article})
         return ret
 
