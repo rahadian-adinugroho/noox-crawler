@@ -80,7 +80,7 @@
     {
         "db_sitename": "Detik",
         "allow_no_image": true,
-        "img_dir": "E:/Proyek/noox-api/public/img/news/",
+        "img_dir": "~/Proyek/noox-backend/public/img/news/",
         "url_regex": "^(?:http|https)://([a-zA-Z]*)\\.detik\\.com(?!\\/infografis)(?!\\/suara)(?:.{,15}\\/read|.{,25}d-[0-9]+|.{25}\\/berita)\\/.+$",
         "skip_when_no_category": false,
         "allow_default_category": false,
