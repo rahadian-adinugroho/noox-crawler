@@ -24,8 +24,13 @@ class NewsGrabber:
     # remove script, style, and another tag.
     _base_regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
 
-    def __init__(self, config):
+    __verboseprint = None
+
+    def __init__(self, config, debug=False, verbose=False):
         self._config = config
+        self._is_debug = debug
+        self._is_verbose = verbose
+        __verboseprint = print if self._is_verbose or self._is_debug else lambda *a, **k: None
 
         regex = self._base_regex
         # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
@@ -64,7 +69,7 @@ class NewsGrabber:
 
             # after the buffer is full and the news is not in the database, retrieve the data
             for url in buffer_:
-                print(url)
+                __verboseprint('Extracting: "{0}"'.format(url))
                 try:
                     req_data = requests.get(url, self._header)
                 except Exception as e:
