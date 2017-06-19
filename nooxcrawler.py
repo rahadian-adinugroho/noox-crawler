@@ -28,13 +28,13 @@ def check_with_db(urls):
 
 
 def get_domain_name(url):
-        """
-        Given a url, return domain name (www.example.com returns example).
-        :param url string: input url
-        :rtype: str
-        """
-        url_parts = urlparse(url).hostname.split('.')
-        return url_parts[1 if len(url_parts) == 3 else 0]
+    """
+    Given a url, return domain name (www.example.com returns example).
+    :param url string: input url
+    :rtype: str
+    """
+    url_parts = urlparse(url).hostname.split('.')
+    return url_parts[1 if len(url_parts) == 3 else 0]
 
 
 def parse_args():
