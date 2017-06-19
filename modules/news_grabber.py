@@ -46,6 +46,12 @@ class NewsGrabber:
         self.__compiled_regex = re.compile(regex)
 
     def process(self, url_list, url_check_callback=None):
+        """
+        Extract the content of the pages from given urls.
+        :param url_list list: url to extract
+        :param url_check_callback function: callback to remove url from list
+        :rtype: list
+        """
         # check if url_list is an instance of list
         if not isinstance(url_list, list):
             raise TypeError('url_list is expected to be an instance of list')
@@ -208,6 +214,11 @@ class NewsGrabber:
         return ret
 
     def _fill_buffer(self, buffer_, urls):
+        """
+        Fill buffer from pool of urls.
+        :param buffer_ list: buffer to fill
+        :param urls deque: pool of urls
+        """
         while urls and len(buffer_) < 20:
             url = urls.popleft()
             if self._config['sitename'] == self._get_domain_name(url):
@@ -216,6 +227,8 @@ class NewsGrabber:
     def _date_parser(self, date):
         """
         Attempt to parse a date from a given string.
+        :param date str: date to parse
+        :rtype: str
         """
         if not isinstance(date, str):
             raise TypeError('date argument is expected to be a string')

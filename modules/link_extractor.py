@@ -34,8 +34,9 @@ class LinkExtractor:
         """
         Begin crawling the target website and return the extracted links.
 
-        @param crawl_depth_override: maximum crawl depth, default is from config
-        @return: list
+        :param crawl_depth_override int: maximum crawl depth, default is from config
+        :param max_link int: max link to extract
+        :rtype: list
         """
         # check whether the config has been initialized
         if self._config == {}:
