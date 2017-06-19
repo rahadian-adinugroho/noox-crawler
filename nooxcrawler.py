@@ -29,10 +29,10 @@ def check_with_db(urls):
 def parse_args():
     parser = argparse.ArgumentParser(description='Noox crawler driver.')
     parser.set_defaults(debug=False, verbose=False, limit=500)
-    parser.add_argument('--debug', action='store_true', help='exit immediately when error occured')
-    parser.add_argument('-v', '--verbose', action='store_true', help='message verbosity')
     parser.add_argument('-o', '--output', action='append', type=str, help='output providers (default = json), can be multiple (-o json -o other)')
     parser.add_argument('-l', '--limit', type=int, help='limit links to be scanned')
+    parser.add_argument('--debug', action='store_true', help='exit immediately when error occured')
+    parser.add_argument('-v', '--verbose', action='store_true', help='message verbosity')
     parser.add_argument('target', help='site to be scanned (enter "all" to scan all sites)')
     return parser.parse_args()
 
@@ -58,6 +58,8 @@ def process_output_providers(destinations, config):
 def crawler(config: dict, args):
     verboseprint = print if args.verbose or args.debug else lambda *a, **k: None
 
+    verboseprint('Scanning site: {0}'.format(config['sitename'].title()))
+
     verboseprint('Starting url scanning...')
     a = LinkExtractor(config, debug=args.debug, verbose=args.verbose)
     links = a.get_urls(max_link=args.limit)
@@ -72,9 +74,12 @@ def crawler(config: dict, args):
         news = grabber.process(links, url_check_callback=check_with_db)
     verboseprint('Scanned '+str(len(news))+' out of '+str(len(links))+' links...')
 
-    for output in process_output_providers(args.output, config):
-        verboseprint('Using output provider: {0}'.format(output.__class__.__name__))
-        output.save(news)
+    if len(news) > 0:
+        for output in process_output_providers(args.output, config):
+            verboseprint('Using output provider: {0}'.format(output.__class__.__name__))
+            output.save(news)
+    else:
+        print('No data to output...')
 
     return
 
@@ -85,13 +90,14 @@ def main():
 
     partial_crawler = partial(crawler, args=args)
     if args.target == 'all':
+        print('Scanning all sites in config folder...')
         configs = []
         for filename in glob.glob('./config/*.conf.json'):
-            print(filename)
             f = open(filename)
             configs.append(json.load(f))
         pool = Pool()
         pool.map(partial_crawler, configs)
+        print('Operation finished...')
     elif alnum_re.match(args.target):
         print('Scanning site: {0}'.format(args.target.title()))
         conf_dir = './config/{0}.conf.json'.format(args.target)
