@@ -74,6 +74,8 @@ def crawler(config: dict, args):
         verboseprint('Using output provider: {0}'.format(output.__class__.__name__))
         output.save(news)
 
+    return
+
 
 def main():
     args = parse_args()
