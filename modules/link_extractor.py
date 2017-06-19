@@ -22,8 +22,11 @@ class LinkExtractor:
 
     _config = {}
 
-    def __init__(self, config, start_url=None):
+    def __init__(self, config, start_url=None, debug=False, verbose=False):
         self._config.update(config)
+        self._is_debug = debug
+        self._is_verbose = verbose
+        self.__verboseprint = print if self._is_verbose or self._is_debug else lambda *a, **k: None
         if isinstance(start_url, str):
             self._edges.put(start_url)
 
@@ -51,13 +54,14 @@ class LinkExtractor:
 
         depth = 0
         sleep(0.001)
+
         while not self._edges.empty() and (not max_link or len(self._links) < max_link):
-            print('Retrieving data from url...')
             edge = self._edges.get(block=True)
+            self.__verboseprint('Retrieving data from "'+edge+'"')
             page = requests.get(edge, headers=self._header)
             # if we got a sitemap index, add these sitemaps to our edge list
             if self._is_sitemap_index(page) and depth == 0:
-                print('Got sitemap index...')
+                self.__verboseprint('Got sitemap index...')
                 if 'sitemapindex_regex' in self._config and len(self._config['sitemapindex_regex']) > 0:
                     sitemapIndexRegex = re.compile(self._config['sitemapindex_regex'])
                 else:
@@ -70,7 +74,7 @@ class LinkExtractor:
             else:
                 # if we got a sitemap, add the locs to the our links list
                 if self._is_sitemap(page):
-                    print('Got sitemap...')
+                    self.__verboseprint('Got sitemap...')
                     for loc in BeautifulSoup(page.text, 'lxml-xml', parse_only=SoupStrainer('loc')):
                         url = loc.get_text().strip()
                         if regex.match(url) and url not in self._links:
@@ -89,8 +93,6 @@ class LinkExtractor:
                                 sleep(0.001)
             depth += 1
 
-        print('Found '+str(len(self._links))+' links...')
-        print('Operation finished...')
         return self._links
 
     def _is_sitemap_index(self, page):

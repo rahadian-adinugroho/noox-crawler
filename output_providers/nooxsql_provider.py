@@ -8,7 +8,7 @@ from output_providers import BaseProvider
 
 class NooxSqlProvider(BaseProvider):
 
-    def __init__(self, config, noox_config, data=None):
+    def __init__(self, config, noox_config=None, data=None):
         if not isinstance(config, dict):
             raise TypeError('config parameter is expected to be dict instance')
         if not all(key in ('db_url', 'db_username', 'db_password', 'db_name') for key in config):
@@ -21,8 +21,6 @@ class NooxSqlProvider(BaseProvider):
         else:
             self.config.update({'db_charset': 'latin-1'})
 
-        self.noox_config = noox_config
-
         self.data = data
 
         self._db = pymysql.connect(
@@ -32,9 +30,10 @@ class NooxSqlProvider(BaseProvider):
             self.config['db_name'],
             charset='utf8')
 
-        self._source_id = self._get_noox_news_source_id()
-        self._noox_categories = self._get_noox_categories()
-        self._url_regex = re.compile(self.noox_config['url_regex'])
+        if noox_config is not None:
+            self.set_noox_config(noox_config)
+        else:
+            self.noox_config = None
 
     def size(self):
         if self.data is not None:
@@ -47,6 +46,9 @@ class NooxSqlProvider(BaseProvider):
         return self
 
     def save(self, data=None):
+        if self.noox_config is None:
+            raise RuntimeError('Noox config (noox_config) is not initialized.')
+
         if data is None:
             data = self.data
         if len(data) < 1:
@@ -66,6 +68,15 @@ class NooxSqlProvider(BaseProvider):
         self.lastinsertids = [i for i in range(cursor.lastrowid, cursor.lastrowid + len(filteredData))]
         self._download_news_images([(id, filteredData[i]['img_url']) for i, id in enumerate(self.lastinsertids)])
         return self.lastinsertids
+
+    def set_noox_config(self, noox_config):
+        if not isinstance(noox_config, dict):
+            raise TypeError('noox_config is expected to be dict type')
+
+        self.noox_config = noox_config
+        self._source_id = self._get_noox_news_source_id()
+        self._noox_categories = self._get_noox_categories()
+        self._url_regex = re.compile(self.noox_config['url_regex'])
 
     def _get_md5(self, string: str):
         m = hashlib.md5()

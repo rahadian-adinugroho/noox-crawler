@@ -24,8 +24,13 @@ class NewsGrabber:
     # remove script, style, and another tag.
     _base_regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
 
-    def __init__(self, config):
+    __verboseprint = None
+
+    def __init__(self, config, debug=False, verbose=False):
         self._config = config
+        self._is_debug = debug
+        self._is_verbose = verbose
+        self.__verboseprint = print if self._is_verbose or self._is_debug else lambda *a, **k: None
 
         regex = self._base_regex
         # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
@@ -64,7 +69,7 @@ class NewsGrabber:
 
             # after the buffer is full and the news is not in the database, retrieve the data
             for url in buffer_:
-                print(url)
+                self.__verboseprint('Extracting: "{0}"'.format(url))
                 try:
                     req_data = requests.get(url, self._header)
                 except Exception as e:
@@ -86,6 +91,8 @@ class NewsGrabber:
                     title = soup.find(self._config["title_tag"]).get_text()
                 if title is None or len(title) < 5:
                     print('url "{0}" title is "{1}"'.format(url, title))
+                    if self._is_debug:
+                        raise RuntimeError('DEBUG: Title extraction error.')
                     continue
 
                 try:
@@ -96,9 +103,13 @@ class NewsGrabber:
                     sqlDate = self._date_parser(date)
                     if sqlDate is None:
                         print('url "{0}" date is "{1}"'.format(url, sqlDate))
+                        if self._is_debug:
+                            raise RuntimeError('DEBUG: Date extraction error.')
                         continue
                 except Exception as e:
                     print('unable to scan "{0}" because "{1}"'.format(url, str(e)))
+                    if self._is_debug:
+                        raise RuntimeError('DEBUG: Date extraction error.')
                     continue
 
                 # if prioritize wrapper or img_tag_attr is empty or null, use wrapper immediately
@@ -128,19 +139,13 @@ class NewsGrabber:
                         img_url = img_tag[src_attr]
                 if img_url is None or len(img_url) < 5:
                     if self._config['allow_no_image']:
-                        print('No img_url for {0}'.format(url))
+                        self.__verboseprint('No img_url for {0}'.format(url))
                         img_url = None
                     else:
                         print('Skipping to scan "{0}" because no img_url'.format(url))
+                        if self._is_debug:
+                            raise RuntimeError('DEBUG: Image url extraction error.')
                         continue
-
-                if "title_attr" in self._config and self._config["title_attr"] is not None:
-                    title = soup.find(self._config["title_tag"], {self._config["title_attr"]: re.compile(self._config["title_attr_val"])}).get_text()
-                else:
-                    title = soup.find(self._config["title_tag"]).get_text()
-                if title is None or len(title) < 5:
-                    print('url "{0}" title is "{1}"'.format(url, title))
-                    continue
 
                 try:
                     if "author_attr" in self._config and self._config["author_attr"] is not None:
@@ -149,7 +154,7 @@ class NewsGrabber:
                         author = soup.find(self._config["author_tag"]).get_text()
                     if author is None or len(author) < 5:
                         if self._config['allow_default_author']:
-                            print('Using default author name...')
+                            self.__verboseprint('Using default author name...')
                             author = self._config['default_author_name']
                         else:
                             print('url "{0}" author is "{1}"'.format(url, author))
@@ -160,10 +165,12 @@ class NewsGrabber:
                         author = author.title()
                 except Exception as e:
                     if self._config['allow_default_author']:
-                        print('Using default author name...')
+                        self.__verboseprint('Using default author name...')
                         author = self._config['default_author_name']
                     else:
                         print('unable to scan "{0}" because author is: "{1}"'.format(url, str(e)))
+                        if self._is_debug:
+                            raise RuntimeError('DEBUG: Author extraction error.')
                         continue
 
                 if "article_attr" in self._config:
