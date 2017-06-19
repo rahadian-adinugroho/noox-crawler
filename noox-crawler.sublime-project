@@ -17,5 +17,16 @@
 			"name": "Configurations",
 			"path": "config"
 		}
-	]
+	],
+	"SublimeLinter":
+	{
+		"linters":
+		{
+			"pep8":
+			{
+				"@disable": false,
+				"max-line-length": 512
+			}
+		}
+	}
 }
