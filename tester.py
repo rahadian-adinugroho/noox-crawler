@@ -8,8 +8,8 @@ from modules import LinkExtractor, NewsGrabber
 from output_providers import NooxSqlProvider, JsonProvider
 
 o_providers = {
-    'json': JsonProvider('liputan6.json', True),
-    'NooxDB': NooxSqlProvider({'db_url': 'localhost', 'db_username': 'root', 'db_password': '', 'db_name': 'nooxdbapi'})
+    'json': JsonProvider,
+    'NooxDB': NooxSqlProvider
 }
 
 alnum_re = re.compile(r'^[A-Za-z0-9]{3,}$')
@@ -37,17 +37,26 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
-
+def process_output_providers(destinations, config):
     o_destinations = []
-    if args.output is None:
-        o_destinations = o_providers['json']
+    if destinations is None:
+        o_destinations = o_providers['json'](config['sitename'], True)
     else:
-        for dest in args.output:
+        for dest in destinations:
             if dest not in o_providers:
                 raise ImportError('Provider for {0} not found.'.format(dest))
-            o_destinations.append(o_providers[dest])
+
+            if dest == 'json':
+                initialized = o_providers[dest](config['sitename'], True)
+            elif dest == 'NooxDB':
+                initialized = o_providers[dest]({'db_url': 'localhost', 'db_username': 'root', 'db_password': '', 'db_name': 'nooxdbapi'}, config['noox_config'])
+
+            o_destinations.append(initialized)
+    return o_destinations
+
+
+def main():
+    args = parse_args()
 
     if args.target == 'all':
         pass
@@ -57,6 +66,7 @@ def main():
             with open(conf_dir) as conf_file:
                 config = json.load(conf_file)
                 # print(config)
+                print(process_output_providers(args.output, config))
                 a = LinkExtractor(config, debug=args.debug, verbose=args.verbose)
                 # print(a.get_urls(1))
                 links = a.get_urls(max_link=100)

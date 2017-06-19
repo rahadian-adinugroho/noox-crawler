@@ -21,11 +21,6 @@ class NooxSqlProvider(BaseProvider):
         else:
             self.config.update({'db_charset': 'latin-1'})
 
-        if noox_config is not None:
-            self.set_noox_config(noox_config)
-        else:
-            self.noox_config = None
-
         self.data = data
 
         self._db = pymysql.connect(
@@ -34,6 +29,11 @@ class NooxSqlProvider(BaseProvider):
             self.config['db_password'],
             self.config['db_name'],
             charset='utf8')
+
+        if noox_config is not None:
+            self.set_noox_config(noox_config)
+        else:
+            self.noox_config = None
 
     def size(self):
         if self.data is not None:
