@@ -1,9 +1,11 @@
 import os
+import glob
 import json
 import hashlib
 import pymysql
 import argparse
 import re
+from multiprocessing import Queue, Pool
 from functools import partial
 from modules import LinkExtractor, NewsGrabber
 from output_providers import NooxSqlProvider, JsonProvider
@@ -83,7 +85,13 @@ def main():
 
     partial_crawler = partial(crawler, args=args)
     if args.target == 'all':
-        pass
+        configs = []
+        for filename in glob.glob('./config/*.conf.json'):
+            print(filename)
+            f = open(filename)
+            configs.append(json.load(f))
+        pool = Pool()
+        pool.map(partial_crawler, configs)
     elif alnum_re.match(args.target):
         print('Scanning site: {0}'.format(args.target.title()))
         conf_dir = './config/{0}.conf.json'.format(args.target)
