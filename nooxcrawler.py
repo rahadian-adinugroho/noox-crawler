@@ -18,6 +18,11 @@ o_providers = {
 
 
 def check_with_db(urls):
+    """
+    Callback to check for existing url in db.
+    :param urls list: urls to check
+    :rtype: list
+    """
     db = pymysql.connect('localhost', 'root', '', 'nooxdbapi')
     cursor = db.cursor()
     sql = 'SELECT `url` FROM `news` WHERE `url_hash` IN ({0})'
@@ -38,6 +43,11 @@ def get_domain_name(url):
 
 
 def parse_args():
+    """
+    Parse supplied arguments.
+
+    :rtype: Namespace
+    """
     parser = argparse.ArgumentParser(description='Noox crawler driver.')
     parser.set_defaults(debug=False, verbose=False, limit=500)
     parser.add_argument('-o', '--output', action='append', type=str, help='output providers (default = json), can be multiple (-o json -o other)')
@@ -49,6 +59,12 @@ def parse_args():
 
 
 def process_output_providers(destinations, config):
+    """
+    Initialize all output providers.
+    :param destinations list: user provided destination key
+    :param config dict: loaded config file
+    :rtype: list
+    """
     o_destinations = []
     if destinations is None:
         o_destinations.append(o_providers['json'](config['sitename']+'.json', True))
@@ -67,6 +83,12 @@ def process_output_providers(destinations, config):
 
 
 def crawler(config: dict, args):
+    """
+    Crawl the sites based on supplied config
+    :param config dict: configuration to use (from file)
+    :param args Namespace: parsed arguments
+    :rtype: None
+    """
     verboseprint = print if args.verbose or args.debug else lambda *a, **k: None
 
     verboseprint('Scanning site: {0}'.format(config['sitename'].title()))
@@ -96,6 +118,13 @@ def crawler(config: dict, args):
 
 
 def extract_url(config, url, args):
+    """
+    Crawl the sites based on supplied config
+    :param config dict: configuration to use (from file)
+    :param url str: url to extract
+    :param args Namespace: parsed arguments
+    :rtype: dict
+    """
     grabber = NewsGrabber(config, debug=args.debug, verbose=args.verbose)
     news = grabber.process([url])
     if len(news) > 0:
