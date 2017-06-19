@@ -5,7 +5,8 @@ import hashlib
 import pymysql
 import argparse
 import re
-from multiprocessing import Queue, Pool
+from urllib.parse import urlparse
+from multiprocessing import Pool
 from functools import partial
 from modules import LinkExtractor, NewsGrabber
 from output_providers import NooxSqlProvider, JsonProvider
@@ -24,6 +25,16 @@ def check_with_db(urls):
     sql = sql.format(in_p)
     cursor.execute(sql)
     return [row[0] for row in cursor.fetchall()]
+
+
+def get_domain_name(url):
+        """
+        Given a url, return domain name (www.example.com returns example).
+        :param url string: input url
+        :rtype: str
+        """
+        url_parts = urlparse(url).hostname.split('.')
+        return url_parts[1 if len(url_parts) == 3 else 0]
 
 
 def parse_args():
@@ -84,9 +95,19 @@ def crawler(config: dict, args):
     return
 
 
+def extract_url(config, url, args):
+    grabber = NewsGrabber(config, debug=args.debug, verbose=args.verbose)
+    news = grabber.process([url])
+    if len(news) > 0:
+        return news[0]
+    else:
+        return None
+
+
 def main():
     args = parse_args()
     alnum_re = re.compile(r'^[A-Za-z0-9]{3,}$')
+    url_re = re.compile(r'(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:\'".,<>?«»“”‘’]))')
 
     partial_crawler = partial(crawler, args=args)
     if args.target == 'all':
@@ -106,6 +127,16 @@ def main():
                 config = json.load(conf_file)
                 partial_crawler(config)
                 print('Operation finished...')
+        else:
+            raise OSError(2, 'Configuration file not found', './config/{0}.conf.json'.format(args.target))
+    elif url_re.match(args.target):
+        domain = get_domain_name(args.target)
+        conf_dir = './config/{0}.conf.json'.format(domain)
+        if os.path.isfile(conf_dir):
+            with open(conf_dir) as conf_file:
+                config = json.load(conf_file)
+                data = extract_url(config, args.target, args)
+                print(json.dumps(data))
         else:
             raise OSError(2, 'Configuration file not found', './config/{0}.conf.json'.format(args.target))
 
