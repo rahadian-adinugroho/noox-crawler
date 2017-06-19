@@ -4,6 +4,7 @@ import hashlib
 import pymysql
 import argparse
 import re
+from functools import partial
 from modules import LinkExtractor, NewsGrabber
 from output_providers import NooxSqlProvider, JsonProvider
 
@@ -52,11 +53,33 @@ def process_output_providers(destinations, config):
     return o_destinations
 
 
+def crawler(config: dict, args):
+    verboseprint = print if args.verbose or args.debug else lambda *a, **k: None
+
+    verboseprint('Starting url scanning...')
+    a = LinkExtractor(config, debug=args.debug, verbose=args.verbose)
+    links = a.get_urls(max_link=args.limit)
+    verboseprint('Found '+str(len(links))+' links...')
+    verboseprint('Link extract finished...')
+
+    verboseprint('Grabbing news data...')
+    grabber = NewsGrabber(config, debug=args.debug, verbose=args.verbose)
+    if args.limit > 0:
+        news = grabber.process(links[:args.limit], url_check_callback=check_with_db)
+    else:
+        news = grabber.process(links, url_check_callback=check_with_db)
+    verboseprint('Scanned '+str(len(news))+' out of '+str(len(links))+' links...')
+
+    for output in process_output_providers(args.output, config):
+        verboseprint('Using output provider: {0}'.format(output.__class__.__name__))
+        output.save(news)
+
+
 def main():
     args = parse_args()
     alnum_re = re.compile(r'^[A-Za-z0-9]{3,}$')
-    verboseprint = print if args.verbose or args.debug else lambda *a, **k: None
 
+    partial_crawler = partial(crawler, args=args)
     if args.target == 'all':
         pass
     elif alnum_re.match(args.target):
@@ -65,24 +88,7 @@ def main():
         if os.path.isfile(conf_dir):
             with open(conf_dir) as conf_file:
                 config = json.load(conf_file)
-
-                verboseprint('Starting url scanning...')
-                a = LinkExtractor(config, debug=args.debug, verbose=args.verbose)
-                links = a.get_urls(max_link=args.limit)
-                verboseprint('Found '+str(len(links))+' links...')
-                verboseprint('Link extract finished...')
-
-                verboseprint('Grabbing news data...')
-                grabber = NewsGrabber(config, debug=args.debug, verbose=args.verbose)
-                if args.limit > 0:
-                    news = grabber.process(links[:args.limit], url_check_callback=check_with_db)
-                else:
-                    news = grabber.process(links, url_check_callback=check_with_db)
-                verboseprint('Scanned '+str(len(news))+' out of '+str(len(links))+' links...')
-
-                for output in process_output_providers(args.output, config):
-                    verboseprint('Using output provider: {0}'.format(output.__class__.__name__))
-                    output.save(news)
+                partial_crawler(config)
                 print('Operation finished...')
         else:
             raise OSError(2, 'Configuration file not found', './config/{0}.conf.json'.format(args.target))
