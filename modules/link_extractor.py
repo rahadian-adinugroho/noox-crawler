@@ -1,7 +1,6 @@
 import requests
 import re
 from collections import deque
-from time import sleep
 from bs4 import BeautifulSoup, SoupStrainer
 
 
@@ -59,7 +58,6 @@ class LinkExtractor:
             edge = self._edges.popleft()
             self.__verboseprint('Retrieving data from "'+edge+'"')
             page = requests.get(edge, headers=self._header, timeout=5)
-            print(page)
             # if we got a sitemap index, add these sitemaps to our edge list
             if self._is_sitemap_index(page) and depth == 0:
                 self.__verboseprint('Got sitemap index...')
