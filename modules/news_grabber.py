@@ -212,39 +212,7 @@ class NewsGrabber:
                 ret.append({'title': title, 'url': url, 'author': author, 'pubtime': sqlDate, 'content': article, 'img_url': img_url})
         return ret
 
-    def _extract_soup(self, soup, elements):
-        ret = {}
-        for el in elements:
-            if el == 'save':
-                if isinstance(elements[el], list):
-                    for toSave in elements[el]:
-                        contents = self._get_content(tag, toSave)
-                        if contents == 61:
-                            print('[WARNING] url: "{0}" does not have required element: {1}'.format(self.__cur_url, toSave['as']))
-                            return 61
-                        ret.update({toSave['as']: contents})
-                if isinstance(elements[el], dict):
-                    contents = self._get_content(tag, elements[el])
-                    if contents == 61:
-                        print('[WARNING] url: "{0}" does not have required element: {1}'.format(self.__cur_url, elements[el]['as']))
-                        return 61
-                    ret.update({elements[el]['as']: contents})
-            else:
-                if not isinstance(elements[el], dict):
-                    raise TypeError('Wrapper value is expected to be dict type.')
-
-                if 'attr' in elements[el] and elements[el]['attr'] is not None:
-                    bsTag = soup.find(elements[el]["tag"], {elements[el]["attr"]: re.compile(elements[el]["attr_val"])})
-                else:
-                    bsTag = soup.find(elements[el]["tag"])
-
-                datas = self._extract_element(bsTag, elements[el])
-                if datas == 61:
-                    return 61
-                ret.update(datas)
-        return ret
-
-    def _extract_element(self, soup, config, data=None):
+    def _extract_soup(self, soup, config, data=None):
         if data is None:
             data = {}
         for el in config:
@@ -278,7 +246,7 @@ class NewsGrabber:
                 else:
                     bsTag = soup.find(config[el]["tag"])
 
-                datas = self._extract_element(bsTag, config[el], data)
+                datas = self._extract_soup(bsTag, config[el], data)
                 if datas == 61:
                     return 61
                 data.update(datas)
@@ -460,4 +428,4 @@ if __name__ == '__main__':
     ng.__cur_url = url
     page = requests.get(url)
     soup = BeautifulSoup(page.text, 'lxml')
-    print(ng._extract_element(soup, conf))
+    print(ng._extract_soup(soup, conf))
