@@ -4,28 +4,30 @@
     "sitemapindex_regex": "",
     "url_regex": "^(?:http|https)://([a-zA-Z]*)\\.detik\\.com(?!\\/infografis)(?!\\/suara)(?:.{,15}\\/read|.{,25}d-[0-9]+|.{25}\\/berita)\\/.+$",
     "crawl_depth": 1,
-    "elements": 
+    "to_extract": 
     {
-        "save": 
-        {
-            "tag": "h1",
-            "attr": null,
-            "attr_val": null,
-            "as": "title"
-        },
-        "element":
+        "save": [
+            {
+                "tag": "h1",
+                "attr": null,
+                "attr_val": null,
+                "as": "title"
+            }
+        ],
+        "image_wrapper": 
         {
             "tag": "div",
             "attr": "class",
             "attr_val": "pic_artikel|media_artikel",
-            "save":
-            {
-                "tag": "img",
-                "attr": null,
-                "attr_val": null,
-                "save_attr": "src",
-                "as": "img_url"
-            }
+            "save": [
+                {
+                    "tag": "img",
+                    "attr": null,
+                    "attr_val": null,
+                    "save_attr": "src",
+                    "as": "img_url"
+                }
+            ]
         }
     },
     "title_tag": "h1",

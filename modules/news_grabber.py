@@ -213,6 +213,46 @@ class NewsGrabber:
                 # print({'title': title, 'text': article})
         return ret
 
+    def _extract_soup(self, soup, elements):
+        ret = {}
+        for el in elements:
+            if el == 'save':
+                if not isinstance(elements[el], list):
+                    raise TypeError('Save value is expected to be list type.')
+                for toSave in elements[el]:
+                    if 'attr' in toSave and toSave['attr'] is not None:
+                        tag = soup.find(toSave["tag"], {toSave["attr"]: re.compile(toSave["attr_val"])})
+                    else:
+                        tag = soup.find(toSave["tag"])
+
+                    if 'save_attr' in toSave:
+                        if tag is None or not tag.has_attr(toSave['save_attr']):
+                            continue
+                        ret[toSave['as']] = tag[toSave['save_attr']]
+                    else:
+                        if tag is None:
+                            continue
+                        ret[toSave['as']] = tag.get_text()
+            else:
+                if not isinstance(elements[el], dict):
+                    raise TypeError('Wrapper value is expected to be dict type.')
+
+                if 'attr' in elements[el] and elements[el]['attr'] is not None:
+                    bsTag = soup.find(toSave["tag"], {toSave["attr"]: re.compile(toSave["attr_val"])})
+                else:
+                    bsTag = soup.find(toSave["tag"])
+                datas = self._extract_element(bsTag, elements[el])
+        return ret
+
+    def _extract_element(self, tag, config, data=None):
+        if data is None:
+            data = {}
+        if 'save' in config:
+            if 'attr' in config['save'] and config['save']['attr'] is not None:
+                pass
+            else:
+                pass
+
     def _fill_buffer(self, buffer_, urls):
         """
         Fill buffer from pool of urls.
