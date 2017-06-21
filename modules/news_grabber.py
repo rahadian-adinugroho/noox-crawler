@@ -221,18 +221,21 @@ class NewsGrabber:
                     for toSave in config[el]:
                         contents = self._get_content(soup, toSave)
                         if contents == 61:
-                            print('[WARNING] url: "{0}" does not have required element: {1}'.format(self.__cur_url, toSave['as']))
+                            print('[WARNING] url: "{0}" does not have required element: "{1}"'.format(self.__cur_url, toSave['as']))
                             return 61
+                        if contents is None:
+                            self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, toSave['as']))
                         data.update({toSave['as']: contents})
                 if isinstance(config[el], dict):
                     contents = self._get_content(soup, config[el])
                     if contents == 61:
-                        print('[WARNING] url: "{0}" does not have required element: {1}'.format(self.__cur_url, config[el]['as']))
+                        print('[WARNING] url: "{0}" does not have required element: "{1}"'.format(self.__cur_url, config[el]['as']))
                         return 61
+                    if contents is None:
+                        self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, config[el]['as']))
                     data.update({config[el]['as']: contents})
             elif 'container' in el:
                 if not isinstance(config[el], dict):
-                    print(el)
                     raise TypeError('Wrapper value is expected to be dict type.')
 
                 if 'attr' in config[el] and config[el]['attr'] is not None:
@@ -473,10 +476,8 @@ if __name__ == '__main__':
                     ]
                 }
             }
-    print(conf)
     ng = NewsGrabber({}, verbose=True)
     url = 'https://inet.detik.com/inetgrafis/d-3518600/wonder-woman-dan-deretan-superhero-dc-terlaris'
-    ng.__cur_url = url
     page = requests.get(url)
     soup = BeautifulSoup(page.text, 'lxml')
     print(ng._extract_soup(soup, conf))
