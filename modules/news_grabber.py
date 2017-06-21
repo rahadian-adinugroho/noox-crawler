@@ -217,12 +217,6 @@ class NewsGrabber:
             data = {}
         for el in config:
             if el == 'save':
-                if soup is None:
-                    if 'required' not in config or config['required']:
-                        # ENODATA value
-                        return 61
-                    else:
-                        return data
                 if isinstance(config[el], list):
                     for toSave in config[el]:
                         contents = self._get_content(soup, toSave)
@@ -254,6 +248,14 @@ class NewsGrabber:
 
     def _get_content(self, bsTag, config):
         ret = None
+        if bsTag is None:
+            if 'required' not in config or config['required']:
+                # the container does not exist in the first place
+                # ENODATA value
+                print('[ERROR] container does not exist')
+                return 61
+            else:
+                return None
         if isinstance(config, dict):
             # find the tag from the soup
             if 'attr' in config and config['attr'] is not None:
@@ -399,13 +401,62 @@ if __name__ == '__main__':
     conf = {
                 "save": [
                     {
-                        "tag": "h1",
-                        "attr": None,
-                        "attr_val": None,
+                        "tag": "meta",
+                        "attr": "property",
+                        "attr_val": "og:title",
+                        "save_attr": "content",
                         "as": "title",
                         "type": "title"
-                    }
+                    },
                 ],
+                "ctn_container":
+                {
+                    "tag": "div",
+                    "attr": "id",
+                    "attr_val": "news",
+                    "save":
+                    {
+                        "tag": "div",
+                        "attr": "class",
+                        "attr_val": "detail_text",
+                        "as": "article"
+                    },
+                    "loc_container":
+                    {
+                        "tag": "div",
+                        "attr": "class",
+                        "attr_val": "detail_text",
+                        "save":
+                            {
+                                "tag": "strong",
+                                "attr": None,
+                                "attr_val": None,
+                                "as": "loc"
+                            }
+                    },
+                    "jdl_container":
+                    {
+                        "tag": "div",
+                        "attr": "class",
+                        "attr_val": "jdl",
+                        "save": [
+                            {
+                                "tag": "span",
+                                "attr": 'class',
+                                "attr_val": 'author',
+                                "as": "author",
+                                "type": "title"
+                            },
+                            {
+                                "tag": "span",
+                                "attr": 'class',
+                                "attr_val": 'date',
+                                "as": "date",
+                                "type": "title"
+                            }
+                        ]
+                    },
+                },
                 "image_container":
                 {
                     "tag": "div",
