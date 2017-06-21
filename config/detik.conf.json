@@ -11,10 +11,11 @@
                 "tag": "h1",
                 "attr": null,
                 "attr_val": null,
-                "as": "title"
+                "as": "title",
+                "type": "title"
             }
         ],
-        "image_wrapper": 
+        "image_container": 
         {
             "tag": "div",
             "attr": "class",

@@ -30,6 +30,7 @@ class NewsGrabber:
         self._config = config
         self._is_debug = debug
         self._is_verbose = verbose
+        self.__cur_url = None
         self.__verboseprint = print if self._is_verbose or self._is_debug else lambda *a, **k: None
 
         regex = self._base_regex
@@ -75,6 +76,7 @@ class NewsGrabber:
 
             # after the buffer is full and the news is not in the database, retrieve the data
             for url in buffer_:
+                self.__cur_url = url
                 self.__verboseprint('Extracting: "{0}"'.format(url))
                 try:
                     req_data = requests.get(url, self._header)
@@ -214,41 +216,102 @@ class NewsGrabber:
         ret = {}
         for el in elements:
             if el == 'save':
-                if not isinstance(elements[el], list):
-                    raise TypeError('Save value is expected to be list type.')
-                for toSave in elements[el]:
-                    if 'attr' in toSave and toSave['attr'] is not None:
-                        tag = soup.find(toSave["tag"], {toSave["attr"]: re.compile(toSave["attr_val"])})
-                    else:
-                        tag = soup.find(toSave["tag"])
-
-                    if 'save_attr' in toSave:
-                        if tag is None or not tag.has_attr(toSave['save_attr']):
-                            continue
-                        ret[toSave['as']] = tag[toSave['save_attr']]
-                    else:
-                        if tag is None:
-                            continue
-                        ret[toSave['as']] = tag.get_text()
+                if isinstance(elements[el], list):
+                    for toSave in elements[el]:
+                        contents = self._get_content(tag, toSave)
+                        if contents == 61:
+                            print('[WARNING] url: "{0}" does not have required element: {1}'.format(self.__cur_url, toSave['as']))
+                            return 61
+                        ret.update({toSave['as']: contents})
+                if isinstance(elements[el], dict):
+                    contents = self._get_content(tag, elements[el])
+                    if contents == 61:
+                        print('[WARNING] url: "{0}" does not have required element: {1}'.format(self.__cur_url, elements[el]['as']))
+                        return 61
+                    ret.update({elements[el]['as']: contents})
             else:
                 if not isinstance(elements[el], dict):
                     raise TypeError('Wrapper value is expected to be dict type.')
 
                 if 'attr' in elements[el] and elements[el]['attr'] is not None:
-                    bsTag = soup.find(toSave["tag"], {toSave["attr"]: re.compile(toSave["attr_val"])})
+                    bsTag = soup.find(elements[el]["tag"], {elements[el]["attr"]: re.compile(elements[el]["attr_val"])})
                 else:
-                    bsTag = soup.find(toSave["tag"])
+                    bsTag = soup.find(elements[el]["tag"])
+
                 datas = self._extract_element(bsTag, elements[el])
+                if datas == 61:
+                    return 61
+                ret.update(datas)
         return ret
 
-    def _extract_element(self, tag, config, data=None):
+    def _extract_element(self, soup, config, data=None):
         if data is None:
             data = {}
-        if 'save' in config:
-            if 'attr' in config['save'] and config['save']['attr'] is not None:
-                pass
+        for el in config:
+            if el == 'save':
+                if soup is None:
+                    if 'required' not in config or config['required']:
+                        # ENODATA value
+                        return 61
+                    else:
+                        return data
+                if isinstance(config[el], list):
+                    for toSave in config[el]:
+                        contents = self._get_content(soup, toSave)
+                        if contents == 61:
+                            print('[WARNING] url: "{0}" does not have required element: {1}'.format(self.__cur_url, toSave['as']))
+                            return 61
+                        data.update({toSave['as']: contents})
+                if isinstance(config[el], dict):
+                    contents = self._get_content(soup, config[el])
+                    if contents == 61:
+                        print('[WARNING] url: "{0}" does not have required element: {1}'.format(self.__cur_url, config[el]['as']))
+                        return 61
+                    data.update({config[el]['as']: contents})
+            elif 'container' in el:
+                if not isinstance(config[el], dict):
+                    print(el)
+                    raise TypeError('Wrapper value is expected to be dict type.')
+
+                if 'attr' in config[el] and config[el]['attr'] is not None:
+                    bsTag = soup.find(config[el]["tag"], {config[el]["attr"]: re.compile(config[el]["attr_val"])})
+                else:
+                    bsTag = soup.find(config[el]["tag"])
+
+                datas = self._extract_element(bsTag, config[el], data)
+                if datas == 61:
+                    return 61
+                data.update(datas)
+        return data
+
+    def _get_content(self, bsTag, config):
+        ret = None
+        if isinstance(config, dict):
+            # find the tag from the soup
+            if 'attr' in config and config['attr'] is not None:
+                tag = bsTag.find(config["tag"], {config["attr"]: re.compile(config["attr_val"])})
             else:
-                pass
+                tag = bsTag.find(config["tag"])
+
+            if 'save_attr' in config:
+                # save attribute value instead of tag content
+                if tag is None or not tag.has_attr(config['save_attr']):
+                    if 'required' not in config or config['required']:
+                        # required is not defined or element is required
+                        # ENODATA value
+                        return 61
+                    return ret
+                ret = tag[config['save_attr']]
+            else:
+                if tag is None:
+                    if 'required' not in config or config['required']:
+                        # ENODATA value
+                        return 61
+                    return ret
+                ret = tag.get_text()
+        else:
+            raise TypeError('config parameter is expected to be type of dict')
+        return ret
 
     def _fill_buffer(self, buffer_, urls):
         """
@@ -363,3 +426,38 @@ class NewsGrabber:
         """
         url_parts = urlparse(url).hostname.split('.')
         return url_parts[1 if len(url_parts) == 3 else 0]
+
+if __name__ == '__main__':
+    conf = {
+                "save": [
+                    {
+                        "tag": "h1",
+                        "attr": None,
+                        "attr_val": None,
+                        "as": "title",
+                        "type": "title"
+                    }
+                ],
+                "image_container":
+                {
+                    "tag": "div",
+                    "attr": "class",
+                    "attr_val": "pic_artikel|media_artikel",
+                    "save": [
+                        {
+                            "tag": "img",
+                            "attr": None,
+                            "attr_val": None,
+                            "save_attr": "src",
+                            "as": "img_url",
+                        }
+                    ]
+                }
+            }
+    print(conf)
+    ng = NewsGrabber({}, verbose=True)
+    url = 'https://inet.detik.com/inetgrafis/d-3518600/wonder-woman-dan-deretan-superhero-dc-terlaris'
+    ng.__cur_url = url
+    page = requests.get(url)
+    soup = BeautifulSoup(page.text, 'lxml')
+    print(ng._extract_element(soup, conf))
