@@ -212,7 +212,7 @@ class NewsGrabber:
                 ret.append({'title': title, 'url': url, 'author': author, 'pubtime': sqlDate, 'content': article, 'img_url': img_url})
         return ret
 
-    def _extract_soup(self, soup, config):
+    def extract_soup(self, soup, config):
         data = {}
         for el in config:
             if el == 'save':
@@ -235,14 +235,14 @@ class NewsGrabber:
                     data.update({config[el]['as']: contents})
             elif 'container' in el:
                 if not isinstance(config[el], dict):
-                    raise TypeError('Wrapper value is expected to be dict type.')
+                    raise TypeError('In: "{0}"; wrapper value is expected to be dict type. (*container* is considered as wrapper tag)')
 
                 if 'attr' in config[el] and config[el]['attr'] is not None:
                     bsTag = soup.find(config[el]["tag"], {config[el]["attr"]: re.compile(config[el]["attr_val"])})
                 else:
                     bsTag = soup.find(config[el]["tag"])
 
-                datas = self._extract_soup(bsTag, config[el])
+                datas = self.extract_soup(bsTag, config[el])
                 if datas == 61:
                     return 61
                 data.update(datas)
@@ -274,7 +274,7 @@ class NewsGrabber:
                         return 61
                     return ret
                 if 'format' in config and config['format'] is not None:
-                    ret = self._format_type(tag, config['format'])
+                    ret = self._format_content(tag, config['format'])
                 else:
                     ret = tag[config['save_attr']]
             else:
@@ -284,14 +284,14 @@ class NewsGrabber:
                         return 61
                     return ret
                 if 'format' in config and config['format'] is not None:
-                    ret = self._format_type(tag, config['format'])
+                    ret = self._format_content(tag, config['format'])
                 else:
                     ret = tag.get_text()
         else:
             raise TypeError('config parameter is expected to be type of dict')
         return ret
 
-    def _format_type(self, bsTag, config):
+    def _format_content(self, bsTag, config):
         if 'type' in config and config['type'] == 'title':
             return bsTag.get_text().title()
         elif 'type' in config and config['type'] == 'date':
@@ -309,6 +309,12 @@ class NewsGrabber:
                     elements = bsTag.find_all(def_['tag'])
                 for el in elements:
                     el.decompose()
+
+        if "regex_capture" in config and len(config["regex_capture"]) > 0:
+            text = bsTag.get_text()
+            cap_regex = re.compile(config["regex_capture"])
+            cap = cap_regex.search(text).group(1)
+            return cap if "regex_capture_title" not in config or not config['regex_capture_title'] else cap.title()
 
         if 'regex_remove' in config or 'replace' in config:
             regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
@@ -480,7 +486,6 @@ if __name__ == '__main__':
                         "attr_val": "og:title",
                         "save_attr": "content",
                         "as": "title",
-                        "type": "title"
                     },
                 ],
                 "ctn_container":
@@ -492,7 +497,7 @@ if __name__ == '__main__':
                     {
                         "tag": "div",
                         "attr": "class",
-                        "attr_val": "detail_text",
+                        "attr_val": "detail_text|text_detail",
                         "as": "article",
                         "format":
                         {
@@ -546,10 +551,14 @@ if __name__ == '__main__':
                                 "attr": 'class',
                                 "attr_val": 'author',
                                 "as": "author",
-                                "type": "title"
+                                "format":
+                                {
+                                    "regex_capture": "((?:[a-zA-Z]+\s)*[a-zA-Z]+)\s+-",
+                                    "regex_capture_title": False
+                                }
                             },
                             {
-                                "tag": "span",
+                                "tag": ["span", "div"],
                                 "attr": 'class',
                                 "attr_val": 'date',
                                 "as": "date",
@@ -582,4 +591,4 @@ if __name__ == '__main__':
     url = 'https://inet.detik.com/inetgrafis/d-3518600/wonder-woman-dan-deretan-superhero-dc-terlaris'
     page = requests.get(url)
     soup = BeautifulSoup(page.text, 'lxml', parse_only=SoupStrainer(ng._find_item(conf, 'tag')))
-    print(ng._extract_soup(soup, conf))
+    print(ng.extract_soup(soup, conf))
