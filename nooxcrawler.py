@@ -24,12 +24,12 @@ def check_with_db(urls):
     :rtype: list
     """
     try:
-        db = pymysql.connect('localhost', 'root', '', 'nooxdbapi', connection_timeout=0.5)
+        db = pymysql.connect('localhost', 'root', '', 'nooxdbapi')
     except Exception as e:
         return []
     cursor = db.cursor()
     sql = 'SELECT `url` FROM `news` WHERE `url_hash` IN ({0})'
-    in_p = ', '.join(map(lambda x: "'" + hashlib.md5(x.encode('utf-8')).hexdigest() + "'", urls))
+    in_p = ', '.join(map(lambda x: "'" + hashlib.md5(re.sub(r'https?://', '', x).encode('utf-8')).hexdigest() + "'", urls))
     sql = sql.format(in_p)
     cursor.execute(sql)
     return [row[0] for row in cursor.fetchall()]
