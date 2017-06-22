@@ -23,7 +23,10 @@ def check_with_db(urls):
     :param urls list: urls to check
     :rtype: list
     """
-    db = pymysql.connect('localhost', 'root', '', 'nooxdbapi')
+    try:
+        db = pymysql.connect('localhost', 'root', '', 'nooxdbapi', connection_timeout=0.5)
+    except Exception as e:
+        return []
     cursor = db.cursor()
     sql = 'SELECT `url` FROM `news` WHERE `url_hash` IN ({0})'
     in_p = ', '.join(map(lambda x: "'" + hashlib.md5(x.encode('utf-8')).hexdigest() + "'", urls))
