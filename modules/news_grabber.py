@@ -273,17 +273,70 @@ class NewsGrabber:
                         # ENODATA value
                         return 61
                     return ret
-                ret = tag[config['save_attr']]
+                if 'format' in config and config['format'] is not None:
+                    ret = self._format_type(tag, config['format'])
+                else:
+                    ret = tag[config['save_attr']]
             else:
                 if tag is None:
                     if 'required' not in config or config['required']:
                         # ENODATA value
                         return 61
                     return ret
-                ret = tag.get_text()
+                if 'format' in config and config['format'] is not None:
+                    ret = self._format_type(tag, config['format'])
+                else:
+                    ret = tag.get_text()
         else:
             raise TypeError('config parameter is expected to be type of dict')
         return ret
+
+    def _format_type(self, bsTag, config):
+        if 'type' in config and config['type'] == 'title':
+            return bsTag.get_text().title()
+        elif 'type' in config and config['type'] == 'date':
+            return self._date_parser(bsTag.get_text(), config)
+        elif 'type' in config and config['type'] == 'get_text':
+            return bsTag.get_text()
+
+        if "bs_remove" in config and len(config["bs_remove"]) > 0:
+            for def_ in config["bs_remove"]:
+                if 'attr' in def_:
+                    if len(def_['attr_val']) < 1:
+                        raise ValueError('attr_val is empty')
+                    elements = bsTag.find_all(def_['tag'], {def_['attr']: re.compile(def_['attr_val'])})
+                else:
+                    elements = bsTag.find_all(def_['tag'])
+                for el in elements:
+                    el.decompose()
+
+        if 'regex_remove' in config or 'replace' in config:
+            regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
+            # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
+            if "regex_remove" in config:
+                regex += '|'+'|'.join(config["regex_remove"])
+
+            # if regex to replace tag is not empty, add it to the exception list.
+            if "replace" in config:
+                config["replace"].update(self._spc_chars)
+                regex += '|'+''.join(map(lambda tag: '(?!'+re.escape(tag)+')', config["replace"]))+r'(?:<\/?(?:\s|\S)*?>)'
+            else:
+                regex += '|'+r'(<\/?(\s|\S)*?>)'
+            fin_regex = re.compile(regex)
+
+            cleantext = re.sub(fin_regex, '', str(bsTag))
+
+            if "replace" in config:
+                fin_text = self._multireplace(cleantext, config["replace"])
+            else:
+                fin_text = self._multireplace(cleantext, spc_chars)
+
+            fin_text = re.sub(r"(?:<br\/?>){3,}", '<br><br>', fin_text)
+            if 'type' in config and config['type'] == 'article' and len(fin_text) < 400:
+                print('[WARNING] url: "{0}" article is less than 250 characters'.format(self.__cur_url))
+                return 61
+            return fin_text
+        return str(bsTag)
 
     def _fill_buffer(self, buffer_, urls):
         """
@@ -296,7 +349,7 @@ class NewsGrabber:
             if self._config['sitename'] == self._get_domain_name(url):
                 buffer_ += [url]
 
-    def _date_parser(self, date):
+    def _date_parser(self, date, config):
         """
         Attempt to parse a date from a given string.
         :param date str: date to parse
@@ -349,17 +402,17 @@ class NewsGrabber:
             'nopember': '11',
             'desember': '12'
         }
-        if self._config["normalize_date"] is True:
+        if 'normalize_date' not in config or config["normalize_date"]:
             repl = {}
             repl.update(month)
             repl.update(shortMonth)
             repl.update(bulan)
             date = self._multireplace(date.lower(), repl)
-        if "date_regex" in self._config and len(self._config["date_regex"]) > 0:
-            reg = re.compile(self._config["date_regex"])
+        if "date_regex" in config and len(config["date_regex"]) > 0:
+            reg = re.compile(config["date_regex"])
             try:
                 matches = reg.search(date).groupdict()
-                date = '{y}/{m}/{d} {h}:{i}'.format_map(matches)
+                date = '{d}/{m}/{y} {h}:{i}'.format_map(matches)
             except Exception as e:
                 date = re.sub(r'[^0-9:\s\/\-]', '', date)
         else:
@@ -440,7 +493,34 @@ if __name__ == '__main__':
                         "tag": "div",
                         "attr": "class",
                         "attr_val": "detail_text",
-                        "as": "article"
+                        "as": "article",
+                        "format":
+                        {
+                            "type": "article",
+                            "bs_remove": [
+                                {
+                                    "tag": "div",
+                                    "attr": "class",
+                                    "attr_val": "box_hl wpgal |boxlr mt15"
+                                }
+                            ],
+                            "replace":
+                            {
+                                "<br>": "<br>",
+                                "<br/>": "<br/>",
+                                "<strong>": "<strong>",
+                                "</strong>": "</strong>",
+                                "<b>": "<b>",
+                                "</b>": "</b>",
+                                "<em>": "<em>",
+                                "</em>": "</em>"
+                            },
+                            "regex_remove":
+                            [
+                                "(?:<table.*?<\\/table>)",
+                                "(?:\\[.+?Video.*?\\])"
+                            ],
+                        }
                     },
                     "loc_container":
                     {
@@ -473,7 +553,11 @@ if __name__ == '__main__':
                                 "attr": 'class',
                                 "attr_val": 'date',
                                 "as": "date",
-                                "type": "title"
+                                "format":
+                                {
+                                    "type": "date",
+                                    "normalize_date": True
+                                }
                             }
                         ]
                     },
