@@ -170,7 +170,7 @@ def main():
                 data = extract_url(config, args.target, args)
                 print(json.dumps(data))
         else:
-            raise OSError(2, 'Configuration file not found', './config/{0}.conf.json'.format(args.target))
+            raise OSError(2, 'Configuration file not found', './config/{0}.conf.json'.format(domain))
 
 if __name__ == '__main__':
     main()

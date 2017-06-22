@@ -32,19 +32,7 @@ class NewsGrabber:
         self._is_verbose = verbose
         self.__cur_url = None
         self.__verboseprint = print if self._is_verbose or self._is_debug else lambda *a, **k: None
-
-        regex = self._base_regex
-        # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
-        if "article_regex_remove" in self._config:
-            regex += '|'+'|'.join(self._config["article_regex_remove"])
-
-        # if regex to replace tag is not empty, add it to the exception list.
-        if "article_tag_replace" in self._config:
-            self._config["article_tag_replace"].update(self._spc_chars)
-            regex += '|'+''.join(map(lambda tag: '(?!'+re.escape(tag)+')', self._config["article_tag_replace"]))+r'(?:<\/?(?:\s|\S)*?>)'
-        else:
-            regex += '|'+r'(<\/?(\s|\S)*?>)'
-        self.__compiled_regex = re.compile(regex)
+        self.__soup_strainer = SoupStrainer(self._find_item(self._config['to_extract'], 'tag'))
 
     def process(self, url_list, url_check_callback=None):
         """
@@ -83,7 +71,7 @@ class NewsGrabber:
                     continue
 
                 # find tag
-                soup = BeautifulSoup(req_data.text, 'lxml', parse_only=SoupStrainer(self._find_item(self._config['to_extract'], 'tag')))
+                soup = BeautifulSoup(req_data.text, 'lxml', parse_only=self.__soup_strainer)
 
                 data = self.extract_soup(soup, self._config['to_extract'])
 
@@ -360,119 +348,3 @@ class NewsGrabber:
         """
         url_parts = urlparse(url).hostname.split('.')
         return url_parts[1 if len(url_parts) == 3 else 0]
-
-if __name__ == '__main__':
-    conf = {
-                "save": [
-                    {
-                        "tag": "meta",
-                        "attr": "property",
-                        "attr_val": "og:title",
-                        "save_attr": "content",
-                        "as": "title",
-                    },
-                ],
-                "ctn_container":
-                {
-                    "tag": "div",
-                    "attr": "id",
-                    "attr_val": "news",
-                    "save":
-                    {
-                        "tag": "div",
-                        "attr": "class",
-                        "attr_val": "detail_text|text_detail",
-                        "as": "article",
-                        "format":
-                        {
-                            "type": "article",
-                            "bs_remove": [
-                                {
-                                    "tag": "div",
-                                    "attr": "class",
-                                    "attr_val": "box_hl wpgal |boxlr mt15"
-                                }
-                            ],
-                            "replace":
-                            {
-                                "<br>": "<br>",
-                                "<br/>": "<br/>",
-                                "<strong>": "<strong>",
-                                "</strong>": "</strong>",
-                                "<b>": "<b>",
-                                "</b>": "</b>",
-                                "<em>": "<em>",
-                                "</em>": "</em>"
-                            },
-                            "regex_remove":
-                            [
-                                "(?:<table.*?<\\/table>)",
-                                "(?:\\[.+?Video.*?\\])"
-                            ],
-                        }
-                    },
-                    "loc_container":
-                    {
-                        "tag": "div",
-                        "attr": "class",
-                        "attr_val": "detail_text",
-                        "save":
-                            {
-                                "tag": "strong",
-                                "attr": None,
-                                "attr_val": None,
-                                "as": "loc"
-                            }
-                    },
-                    "jdl_container":
-                    {
-                        "tag": "div",
-                        "attr": "class",
-                        "attr_val": "jdl",
-                        "save": [
-                            {
-                                "tag": "span",
-                                "attr": 'class',
-                                "attr_val": 'author',
-                                "as": "author",
-                                "format":
-                                {
-                                    "regex_capture": "((?:[a-zA-Z]+\s)*[a-zA-Z]+)\s+-",
-                                    "regex_capture_title": False
-                                }
-                            },
-                            {
-                                "tag": ["span", "div"],
-                                "attr": 'class',
-                                "attr_val": 'date',
-                                "as": "date",
-                                "format":
-                                {
-                                    "type": "date",
-                                    "normalize_date": True
-                                }
-                            }
-                        ]
-                    },
-                },
-                "image_container":
-                {
-                    "tag": "div",
-                    "attr": "class",
-                    "attr_val": "pic_artikel|media_artikel",
-                    "save": [
-                        {
-                            "tag": "img",
-                            "attr": None,
-                            "attr_val": None,
-                            "save_attr": "src",
-                            "as": "img_url",
-                        }
-                    ]
-                }
-            }
-    ng = NewsGrabber({}, verbose=True)
-    url = 'https://inet.detik.com/inetgrafis/d-3518600/wonder-woman-dan-deretan-superhero-dc-terlaris'
-    page = requests.get(url)
-    soup = BeautifulSoup(page.text, 'lxml', parse_only=SoupStrainer(ng._find_item(conf, 'tag')))
-    print(ng.extract_soup(soup, conf))
