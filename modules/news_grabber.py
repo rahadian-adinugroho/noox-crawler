@@ -30,6 +30,7 @@ class NewsGrabber:
         self._config = config
         self._is_debug = debug
         self._is_verbose = verbose
+        self.__cur_url = None
         self.__verboseprint = print if self._is_verbose or self._is_debug else lambda *a, **k: None
 
         regex = self._base_regex
@@ -75,6 +76,7 @@ class NewsGrabber:
 
             # after the buffer is full and the news is not in the database, retrieve the data
             for url in buffer_:
+                self.__cur_url = url
                 self.__verboseprint('Extracting: "{0}"'.format(url))
                 try:
                     req_data = requests.get(url, self._header)
@@ -113,7 +115,7 @@ class NewsGrabber:
                         date = soup.find(self._config["date_tag"], {self._config["date_attr"]: re.compile(self._config["date_attr_val"])}).get_text()
                     else:
                         date = soup.find(self._config["date_tag"]).get_text()
-                    sqlDate = self._date_parser(date)
+                    sqlDate = self._date_parser(date, self._config)
                     if sqlDate is None:
                         print('url "{0}" date is "{1}"'.format(url, sqlDate))
                         if self._is_debug:
@@ -187,38 +189,171 @@ class NewsGrabber:
                         continue
 
                 if "article_attr" in self._config:
-                    article_parts = soup.find_all(self._config["article_tag"], {self._config["article_attr"]: re.compile(self._config["article_attr_val"])})
+                    article_tag = soup.find(self._config["article_tag"], {self._config["article_attr"]: re.compile(self._config["article_attr_val"])})
                 else:
-                    article_parts = soup.find_all(self._config["article_tag"])
+                    article_tag = soup.find(self._config["article_tag"])
+
+                if article_tag is None:
+                    print('url "{0}" article tag not found'.format(url))
+                    continue
 
                 if "article_bs_remove" in self._config and len(self._config["article_bs_remove"]) > 0:
-                    for i, item in enumerate(article_parts):
-                        for def_ in self._config["article_bs_remove"]:
-                            if 'attr' in def_:
-                                if len(def_['attr_val']) < 1:
-                                    raise ValueError('attr_val is empty')
-                                elements = article_parts[i].find_all(def_['tag'], {def_['attr']: re.compile(def_['attr_val'])})
-                            else:
-                                elements = article_parts[i].find_all(def_['tag'])
-                            for el in elements:
-                                el.decompose()
+                    for def_ in self._config["article_bs_remove"]:
+                        if 'attr' in def_:
+                            if len(def_['attr_val']) < 1:
+                                raise ValueError('attr_val is empty')
+                            elements = article_tag.find_all(def_['tag'], {def_['attr']: re.compile(def_['attr_val'])})
+                        else:
+                            elements = article_tag.find_all(def_['tag'])
+                        for el in elements:
+                            el.decompose()
 
-                article = ''
-                for part in article_parts:
-                    cleantext = re.sub(self.__compiled_regex, '', str(part))
+                cleantext = re.sub(self.__compiled_regex, '', str(article_tag))
 
-                    if "article_tag_replace" in self._config:
-                        article += self._multireplace(cleantext, self._config["article_tag_replace"])
-                    else:
-                        article += self._multireplace(cleantext, spc_chars)
+                if "article_tag_replace" in self._config:
+                    article = self._multireplace(cleantext, self._config["article_tag_replace"])
+                else:
+                    article = self._multireplace(cleantext, spc_chars)
+
                 article = re.sub(r"(?:<br\/?>){3,}", '<br><br>', article)
                 if article is None or len(article) < 200:
                     print('url "{0}" content is "{1}"'.format(url, article))
                     continue
-                # print(article)
+
                 ret.append({'title': title, 'url': url, 'author': author, 'pubtime': sqlDate, 'content': article, 'img_url': img_url})
-                # print({'title': title, 'text': article})
         return ret
+
+    def extract_soup(self, soup, config):
+        data = {}
+        for el in config:
+            if el == 'save':
+                if isinstance(config[el], list):
+                    for toSave in config[el]:
+                        contents = self._get_content(soup, toSave)
+                        if contents == 61:
+                            print('[WARNING] url: "{0}" does not have required element: "{1}"'.format(self.__cur_url, toSave['as']))
+                            return 61
+                        if contents is None:
+                            self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, toSave['as']))
+                        data.update({toSave['as']: contents})
+                if isinstance(config[el], dict):
+                    contents = self._get_content(soup, config[el])
+                    if contents == 61:
+                        print('[WARNING] url: "{0}" does not have required element: "{1}"'.format(self.__cur_url, config[el]['as']))
+                        return 61
+                    if contents is None:
+                        self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, config[el]['as']))
+                    data.update({config[el]['as']: contents})
+            elif 'container' in el:
+                if not isinstance(config[el], dict):
+                    raise TypeError('In key: "{0}"; key content is expected to be dict type. (*container* is considered as wrapper tag)')
+
+                if 'attr' in config[el] and config[el]['attr'] is not None:
+                    bsTag = soup.find(config[el]["tag"], {config[el]["attr"]: re.compile(config[el]["attr_val"])})
+                else:
+                    bsTag = soup.find(config[el]["tag"])
+
+                datas = self.extract_soup(bsTag, config[el])
+                if datas == 61:
+                    return 61
+                data.update(datas)
+        return data
+
+    def _get_content(self, bsTag, config):
+        ret = None
+        if bsTag is None:
+            if 'required' not in config or config['required']:
+                # the container does not exist in the first place
+                # ENODATA value
+                print('[ERROR] container does not exist')
+                return 61
+            else:
+                return None
+        if isinstance(config, dict):
+            # find the tag from the soup
+            if 'attr' in config and config['attr'] is not None:
+                tag = bsTag.find(config["tag"], {config["attr"]: re.compile(config["attr_val"])})
+            else:
+                tag = bsTag.find(config["tag"])
+
+            if 'save_attr' in config:
+                # save attribute value instead of tag content
+                if tag is None or not tag.has_attr(config['save_attr']):
+                    if 'required' not in config or config['required']:
+                        # required is not defined or element is required
+                        # ENODATA value
+                        return 61
+                    return ret
+                if 'format' in config and config['format'] is not None:
+                    ret = self._format_content(tag, config['format'], save_attr=config['save_attr'])
+                else:
+                    ret = tag[config['save_attr']]
+            else:
+                if tag is None:
+                    if 'required' not in config or config['required']:
+                        # ENODATA value
+                        return 61
+                    return ret
+                if 'format' in config and config['format'] is not None:
+                    ret = self._format_content(tag, config['format'])
+                else:
+                    ret = tag.get_text()
+        else:
+            raise TypeError('config parameter is expected to be type of dict')
+        return ret
+
+    def _format_content(self, bsTag, config, save_attr=None):
+        if 'type' in config and config['type'] == 'title':
+            return bsTag[save_attr].title() if isinstance(save_attr, str) else bsTag.get_text().title()
+        elif 'type' in config and config['type'] == 'date':
+            return self._date_parser(bsTag[save_attr] if isinstance(save_attr, str) else bsTag.get_text(), config)
+        elif 'type' in config and config['type'] == 'get_text':
+            return bsTag.get_text()
+
+        if "bs_remove" in config and len(config["bs_remove"]) > 0:
+            for def_ in config["bs_remove"]:
+                if 'attr' in def_:
+                    if len(def_['attr_val']) < 1:
+                        raise ValueError('attr_val is empty')
+                    elements = bsTag.find_all(def_['tag'], {def_['attr']: re.compile(def_['attr_val'])})
+                else:
+                    elements = bsTag.find_all(def_['tag'])
+                for el in elements:
+                    el.decompose()
+
+        if "regex_capture" in config and len(config["regex_capture"]) > 0:
+            text = bsTag[save_attr] if isinstance(save_attr, str) else bsTag.get_text()
+            cap_regex = re.compile(config["regex_capture"])
+            cap = cap_regex.search(text).group(1)
+            return cap if "regex_capture_title" not in config or not config['regex_capture_title'] else cap.title()
+
+        if 'regex_remove' in config or 'replace' in config:
+            regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
+            # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
+            if "regex_remove" in config:
+                regex += '|'+'|'.join(config["regex_remove"])
+
+            # if regex to replace tag is not empty, add it to the exception list.
+            if "replace" in config:
+                config["replace"].update(self._spc_chars)
+                regex += '|'+''.join(map(lambda tag: '(?!'+re.escape(tag)+')', config["replace"]))+r'(?:<\/?(?:\s|\S)*?>)'
+            else:
+                regex += '|'+r'(<\/?(\s|\S)*?>)'
+            fin_regex = re.compile(regex)
+
+            cleantext = re.sub(fin_regex, '', str(bsTag))
+
+            if "replace" in config:
+                fin_text = self._multireplace(cleantext, config["replace"])
+            else:
+                fin_text = self._multireplace(cleantext, spc_chars)
+
+            fin_text = re.sub(r"(?:<br\/?>){3,}", '<br><br>', fin_text)
+            if 'type' in config and config['type'] == 'article' and len(fin_text) < 400:
+                print('[WARNING] url: "{0}" article is less than 250 characters'.format(self.__cur_url))
+                return 61
+            return fin_text
+        return str(bsTag)
 
     def _fill_buffer(self, buffer_, urls):
         """
@@ -231,7 +366,7 @@ class NewsGrabber:
             if self._config['sitename'] == self._get_domain_name(url):
                 buffer_ += [url]
 
-    def _date_parser(self, date):
+    def _date_parser(self, date, config):
         """
         Attempt to parse a date from a given string.
         :param date str: date to parse
@@ -284,17 +419,17 @@ class NewsGrabber:
             'nopember': '11',
             'desember': '12'
         }
-        if self._config["normalize_date"] is True:
+        if 'normalize_date' not in config or config["normalize_date"]:
             repl = {}
             repl.update(month)
             repl.update(shortMonth)
             repl.update(bulan)
             date = self._multireplace(date.lower(), repl)
-        if "date_regex" in self._config and len(self._config["date_regex"]) > 0:
-            reg = re.compile(self._config["date_regex"])
+        if "date_regex" in config and len(config["date_regex"]) > 0:
+            reg = re.compile(config["date_regex"])
             try:
                 matches = reg.search(date).groupdict()
-                date = '{y}/{m}/{d} {h}:{i}'.format_map(matches)
+                date = '{d}/{m}/{y} {h}:{i}'.format_map(matches)
             except Exception as e:
                 date = re.sub(r'[^0-9:\s\/\-]', '', date)
         else:
@@ -306,6 +441,25 @@ class NewsGrabber:
             return dateObj.strftime("%Y-%m-%d %H:%M:%S")
         except Exception as e:
             return None
+
+    def _find_item(self, obj, key):
+        ret = []
+        if isinstance(obj, dict):
+            if key in obj:
+                ret.append(obj[key])
+            for i, d in obj.items():
+                item = self._find_item(d, key)
+                if len(item) > 0:
+                    ret = [v for v in item if v not in ret] + ret
+            return ret
+        elif isinstance(obj, list):
+            for d in obj:
+                item = self._find_item(d, key)
+                if len(item) > 0:
+                    ret = [v for v in item if v not in ret] + ret
+            return ret
+        else:
+            return ret
 
     def _multireplace(self, string, replacements):
         """
@@ -333,3 +487,119 @@ class NewsGrabber:
         """
         url_parts = urlparse(url).hostname.split('.')
         return url_parts[1 if len(url_parts) == 3 else 0]
+
+if __name__ == '__main__':
+    conf = {
+                "save": [
+                    {
+                        "tag": "meta",
+                        "attr": "property",
+                        "attr_val": "og:title",
+                        "save_attr": "content",
+                        "as": "title",
+                    },
+                ],
+                "ctn_container":
+                {
+                    "tag": "div",
+                    "attr": "id",
+                    "attr_val": "news",
+                    "save":
+                    {
+                        "tag": "div",
+                        "attr": "class",
+                        "attr_val": "detail_text|text_detail",
+                        "as": "article",
+                        "format":
+                        {
+                            "type": "article",
+                            "bs_remove": [
+                                {
+                                    "tag": "div",
+                                    "attr": "class",
+                                    "attr_val": "box_hl wpgal |boxlr mt15"
+                                }
+                            ],
+                            "replace":
+                            {
+                                "<br>": "<br>",
+                                "<br/>": "<br/>",
+                                "<strong>": "<strong>",
+                                "</strong>": "</strong>",
+                                "<b>": "<b>",
+                                "</b>": "</b>",
+                                "<em>": "<em>",
+                                "</em>": "</em>"
+                            },
+                            "regex_remove":
+                            [
+                                "(?:<table.*?<\\/table>)",
+                                "(?:\\[.+?Video.*?\\])"
+                            ],
+                        }
+                    },
+                    "loc_container":
+                    {
+                        "tag": "div",
+                        "attr": "class",
+                        "attr_val": "detail_text",
+                        "save":
+                            {
+                                "tag": "strong",
+                                "attr": None,
+                                "attr_val": None,
+                                "as": "loc"
+                            }
+                    },
+                    "jdl_container":
+                    {
+                        "tag": "div",
+                        "attr": "class",
+                        "attr_val": "jdl",
+                        "save": [
+                            {
+                                "tag": "span",
+                                "attr": 'class',
+                                "attr_val": 'author',
+                                "as": "author",
+                                "format":
+                                {
+                                    "regex_capture": "((?:[a-zA-Z]+\s)*[a-zA-Z]+)\s+-",
+                                    "regex_capture_title": False
+                                }
+                            },
+                            {
+                                "tag": ["span", "div"],
+                                "attr": 'class',
+                                "attr_val": 'date',
+                                "as": "date",
+                                "format":
+                                {
+                                    "type": "date",
+                                    "normalize_date": True
+                                }
+                            }
+                        ]
+                    },
+                },
+                "image_container":
+                {
+                    "tag": "div",
+                    "attr": "class",
+                    "attr_val": "pic_artikel|media_artikel",
+                    "save": [
+                        {
+                            "tag": "img",
+                            "attr": None,
+                            "attr_val": None,
+                            "save_attr": "src",
+                            "as": "img_url",
+                        }
+                    ]
+                }
+            }
+    ng = NewsGrabber({}, verbose=True)
+    url = 'https://inet.detik.com/inetgrafis/d-3518600/wonder-woman-dan-deretan-superhero-dc-terlaris'
+    page = requests.get(url)
+    soup = BeautifulSoup(page.text, 'lxml', parse_only=SoupStrainer(ng._find_item(conf, 'tag')))
+    print(ng.extract_soup(soup, conf))
