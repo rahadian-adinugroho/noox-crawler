@@ -85,6 +85,14 @@ class NewsGrabber:
         return ret
 
     def extract_soup(self, soup, config):
+        """
+        Extract a content from soup object recursively. The function will assume key with string 'container' is a wrapper object of extraction target data.
+        note that 61 is treated as fatal error. Number 61 is based on C errno.h. Number 61 will be returned if required data is not found or failed to extract.
+
+        :param soup BeautifulSoup: soup to iterate
+        :param config dict: list of item to extract and its wrapper
+        :rtype: dict
+        """
         data = {}
         for el in config:
             if el == 'save':
@@ -121,6 +129,12 @@ class NewsGrabber:
         return data
 
     def _get_content(self, bsTag, config):
+        """
+        Save an element inside a BeautifulSoup tag object.
+        :param bsTag Tag: BeautifulSoup tag object
+        :param config dict: definition of element to save (with its formatting, if exist)
+        :rtype: str
+        """
         ret = None
         if bsTag is None:
             if 'required' not in config or config['required']:
@@ -164,6 +178,13 @@ class NewsGrabber:
         return ret
 
     def _format_content(self, bsTag, config, save_attr=None):
+        """
+        Format the extracted content according to the config.
+        :param bsTag Tag: BeautifulSoup tag object
+        :param config dict: formatting configuration
+        :param save_attr str: extract the target element attribute instead of content
+        :rtype: str
+        """
         if 'type' in config and config['type'] == 'title':
             return bsTag[save_attr].title() if isinstance(save_attr, str) else bsTag.get_text().title()
         elif 'type' in config and config['type'] == 'date':
@@ -304,6 +325,12 @@ class NewsGrabber:
             return None
 
     def _find_item(self, obj, key):
+        """
+        Recursively find the value certain key inside a dict. Returned value will be distinct.
+        :param obj dict: dictionary to iterate
+        :param key str: key to find
+        :rtype: list
+        """
         ret = []
         if isinstance(obj, dict):
             if key in obj:
