@@ -8,11 +8,63 @@
     {
         "save": [
             {
-                "tag": "h1",
-                "attr": null,
-                "attr_val": null,
-                "as": "title",
-                "type": "title"
+                "tag": "meta",
+                "attr": "property",
+                "attr_val": "og:title",
+                "save_attr": "content",
+                "as": "title"
+            },
+            {
+                "tag": "meta",
+                "attr": "name",
+                "attr_val": "publishdate",
+                "save_attr": "content",
+                "as": "pubtime",
+                "format":
+                    {
+                        "type": "date",
+                        "normalize_date": false
+                    }
+            },
+             {
+                "tag": "meta",
+                "attr": "name",
+                "attr_val": "author",
+                "save_attr": "content",
+                "as": "author"
+            },
+            {
+                "tag": "div",
+                "attr": "class",
+                "attr_val": "detail_text|text_detail",
+                "as": "article",
+                "format":
+                    {
+                        "type": "article",
+                        "bs_remove": [
+                            {
+                                "tag": "div",
+                                "attr": "class",
+                                "attr_val": "box_hl wpgal |boxlr mt15"
+                            }
+                        ],
+                        "replace":
+                        {
+                            "<br>": "<br>",
+                            "<br/>": "<br/>",
+                            "<strong>": "<strong>",
+                            "</strong>": "</strong>",
+                            "<b>": "<b>",
+                            "</b>": "</b>",
+                            "<em>": "<em>",
+                            "</em>": "</em>"
+                        },
+                        "regex_remove":
+                        [
+                            "(?:<table.*?<\\/table>)",
+                            "(?:\\[.+?Video.*?\\])"
+                        ]
+                    }
             }
         ],
         "image_container": 
