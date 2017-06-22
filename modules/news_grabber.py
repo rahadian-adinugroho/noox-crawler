@@ -110,7 +110,12 @@ class NewsGrabber:
                             print('[WARNING] url: "{0}" does not have required element: "{1}"'.format(self.__cur_url, toSave['as']))
                             return 61
                         if contents is None:
-                            self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, toSave['as']))
+                            if 'default' in toSave and len(toSave['default']) > 0:
+                                # if the content is not required ('required': false) and default value is supplied, we use the supplied default value
+                                self.__verboseprint('[INFO] url: "{0}", element: "{1}" is using default value: "{2}"'.format(self.__cur_url, toSave['as'], toSave['default']))
+                                contents = toSave['default']
+                            else:
+                                self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, toSave['as']))
                         data.update({toSave['as']: contents})
                 if isinstance(config[el], dict):
                     contents = self._get_content(soup, config[el])
@@ -118,7 +123,11 @@ class NewsGrabber:
                         print('[WARNING] url: "{0}" does not have required element: "{1}"'.format(self.__cur_url, config[el]['as']))
                         return 61
                     if contents is None:
-                        self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, config[el]['as']))
+                        if 'default' in config[el] and len(config[el]['default']) > 0:
+                            self.__verboseprint('[INFO] url: "{0}", element: "{1}" is using default value: "{2}"'.format(self.__cur_url, config[el]['as'], config[el]['default']))
+                            contents = config[el]['default']
+                        else:
+                            self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, config[el]['as']))
                     data.update({config[el]['as']: contents})
             elif 'container' in el:
                 # if we found a '*container*' key (img_container, title_container, etc.), explore the container
@@ -184,6 +193,12 @@ class NewsGrabber:
                     ret = tag.get_text()
         else:
             raise TypeError('config parameter is expected to be type of dict')
+
+        if ret is None or len(ret) < 1:
+            if 'required' not in config or config['required']:
+                return 61
+            else:
+                return None
         return ret
 
     def _format_content(self, bsTag, config, save_attr=None):
