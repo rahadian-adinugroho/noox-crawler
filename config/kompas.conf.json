@@ -4,44 +4,69 @@
     "sitemapindex_regex": "",
     "url_regex": "^(?:http|https)://([a-zA-Z]*)\\.kompas\\.com\\/read\\/.+$",
     "crawl_depth": 1,
-    "title_tag": ["h1"],
-    "title_attr": "class",
-    "title_attr_val": "read__title",
-    "img_wrapper_tag": "div",
-    "img_wrapper_attr": "class",
-    "img_wrapper_attr_val": "photo",
-    "prioritize_wrapper": true,
-    "img_tag_attr": null,
-    "img_tag_attr_val": null,
-    "img_tag_src_attr": "src",
-    "allow_no_image": true,
-    "author_tag": "div",
-    "author_attr": "class",
-    "author_attr_val": "read__author",
-    "author_regex": "",
-    "allow_default_author": false,
-    "default_author_name": null,
-    "date_tag": "div",
-    "date_attr": "class",
-    "date_attr_val": "read__time",
-    "date_regex": "",
-    "normalize_date": false,
-    "article_tag": "div",
-    "article_attr": "class",
-    "article_attr_val": "read__content",
-    "article_bs_remove": [],
-    "article_tag_replace": 
+    "to_extract":
     {
-        "</p>" : "<br><br>",
-        "<strong>" : "<strong>",
-        "</strong>" : "</strong>"
+        "save": [
+            {
+                "tag": "meta",
+                "attr": "name",
+                "attr_val": "content_author",
+                "save_attr": "content",
+                "as": "author"
+            },
+            {
+                "tag": "meta",
+                "attr": "name",
+                "attr_val": "content_PublishedDate",
+                "save_attr": "content",
+                "as": "pubtime"
+            },
+            {
+                "tag": "h1",
+                "attr": "class",
+                "attr_val": "read__title",
+                "as": "title"
+            },
+            {
+                "tag": "div",
+                "attr": "class",
+                "attr_val": "read__content",
+                "as": "content",
+                "format":
+                {
+                    "type": "article",
+                    "bs_remove": [],
+                    "replace":
+                    {
+                        "</p>" : "<br><br>",
+                        "<strong>" : "<strong>",
+                        "</strong>" : "</strong>"
+                    },
+                    "regex_remove":
+                    [
+                        "(?:\\(Baca.*?\\))",
+                        "(?:<div.+class=\"video\".*?<\\/div>)",
+                        "(?:<strong>[\\s\\[]*Baca.*?>)"
+                    ]
+                }
+            }
+        ],
+        "img_container": 
+        {
+            "tag": "div",
+            "attr": "class",
+            "attr_val": "photo",
+            "save": 
+            {
+                "tag": "img",
+                "attr": null,
+                "attr_val": null,
+                "save_attr": "src",
+                "as": "img_url",
+                "required": false
+            }
+        }
     },
-    "article_regex_remove" : 
-    [
-    	"(?:\\(Baca.*?\\))",
-    	"(?:<div.+class=\"video\".*?<\\/div>)",
-        "(?:<strong>[\\s\\[]*Baca.*?>)"
-    ],
     "noox_config":
     {
         "db_sitename": "Kompas",
