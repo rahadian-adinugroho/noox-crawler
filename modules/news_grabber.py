@@ -212,9 +212,8 @@ class NewsGrabber:
                 ret.append({'title': title, 'url': url, 'author': author, 'pubtime': sqlDate, 'content': article, 'img_url': img_url})
         return ret
 
-    def _extract_soup(self, soup, config, data=None):
-        if data is None:
-            data = {}
+    def _extract_soup(self, soup, config):
+        data = {}
         for el in config:
             if el == 'save':
                 if isinstance(config[el], list):
@@ -243,7 +242,7 @@ class NewsGrabber:
                 else:
                     bsTag = soup.find(config[el]["tag"])
 
-                datas = self._extract_soup(bsTag, config[el], data)
+                datas = self._extract_soup(bsTag, config[el])
                 if datas == 61:
                     return 61
                 data.update(datas)
@@ -373,6 +372,25 @@ class NewsGrabber:
         except Exception as e:
             return None
 
+    def _find_item(self, obj, key):
+        ret = []
+        if isinstance(obj, dict):
+            if key in obj:
+                ret.append(obj[key])
+            for i, d in obj.items():
+                item = self._find_item(d, key)
+                if len(item) > 0:
+                    ret = [v for v in item if v not in ret] + ret
+            return ret
+        elif isinstance(obj, list):
+            for d in obj:
+                item = self._find_item(d, key)
+                if len(item) > 0:
+                    ret = [v for v in item if v not in ret] + ret
+            return ret
+        else:
+            return ret
+
     def _multireplace(self, string, replacements):
         """
         Given a string and a replacement map, it returns the replaced string.
@@ -479,5 +497,5 @@ if __name__ == '__main__':
     ng = NewsGrabber({}, verbose=True)
     url = 'https://inet.detik.com/inetgrafis/d-3518600/wonder-woman-dan-deretan-superhero-dc-terlaris'
     page = requests.get(url)
-    soup = BeautifulSoup(page.text, 'lxml')
+    soup = BeautifulSoup(page.text, 'lxml', parse_only=SoupStrainer(ng._find_item(conf, 'tag')))
     print(ng._extract_soup(soup, conf))
