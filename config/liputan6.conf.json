@@ -4,56 +4,73 @@
     "sitemapindex_regex": "^.*web.*sitemap.*\\.xml$",
     "url_regex": "^(?:http|https)://([a-zA-Z]*)\\.liputan6\\.com\\/read\\/.+$",
     "crawl_depth": 1,
-    "title_tag": ["h1"],
-    "title_attr": "class",
-    "title_attr_val": "read-page--header--title",
-    "img_wrapper_tag": "picture",
-    "img_wrapper_attr": "class",
-    "img_wrapper_attr_val": "read-page--photo-gallery--item__picture",
-    "prioritize_wrapper": false,
-    "img_tag_attr": "class",
-    "img_tag_attr_val": "read-page--photo-gallery--item__picture-lazyload",
-    "img_tag_src_attr": "data-src",
-    "allow_no_image": true,
-    "author_tag": "span",
-    "author_attr": "class",
-    "author_attr_val": "read-page--header--author__name",
-    "author_regex": "",
-    "allow_default_author": false,
-    "default_author_name": null,
-    "date_tag": "time",
-    "date_attr": "class",
-    "date_attr_val": "read-page--header--author__datetime",
-    "date_regex": "",
-    "normalize_date": true,
-    "article_tag": "div",
-    "article_attr": "class",
-    "article_attr_val": "article-content-body__item-content",
-    "article_bs_remove": [
-        {
-            "tag": "div",
-            "attr": "class",
-            "attr_val": "baca-juga"
-        }
-    ],
-    "article_tag_replace": 
+    "to_extract":
     {
-        "<b>" : "<b>",
-        "</b>" : "</b>",
-        "</p>" : "<br><br>",
-        "<br>": "<br>",
-        "<br/>": "<br/>",
-        "<strong>" : "<strong>",
-        "</strong>" : "</strong>",
-        "<em>" : "<em>",
-        "</em>" : "</em>"
+        "save": [
+            {
+                "tag": "meta",
+                "attr": "property",
+                "attr_val": "og:title",
+                "save_attr": "content",
+                "as": "title"
+            },
+            {
+                "tag": "meta",
+                "attr": "property",
+                "attr_val": "og:image",
+                "save_attr": "content",
+                "as": "img_url"
+            },
+            {
+                "tag": "span",
+                "attr": "class",
+                "attr_val": "read-page--header--author__name",
+                "as": "author"
+            },
+            {
+                "tag": "time",
+                "attr": "class",
+                "attr_val": "read-page--header--author__datetime",
+                "save_attr": "datetime",
+                "as": "pubtime"
+            },
+            {
+                "tag": "div",
+                "attr": "class",
+                "attr_val": "article-content-body__item-content",
+                "as": "content",
+                "format":
+                {
+                    "type": "article",
+                    "bs_remove": [
+                        {
+                            "tag": "div",
+                            "attr": "class",
+                            "attr_val": "baca-juga"
+                        }
+                    ],
+                    "replace":
+                    {
+                        "<b>" : "<b>",
+                        "</b>" : "</b>",
+                        "</p>" : "<br><br>",
+                        "<br>": "<br>",
+                        "<br/>": "<br/>",
+                        "<strong>" : "<strong>",
+                        "</strong>" : "</strong>",
+                        "<em>" : "<em>",
+                        "</em>" : "</em>"
+                    },
+                    "regex_remove":
+                    [
+                        "(?:\\(Baca.*?\\))",
+                        "(?:<div.+class=\"video\".*?<\\/div>)",
+                        "(?:<strong>[\\s\\[]*Baca.*?>)"
+                    ]
+                }
+            }
+        ]
     },
-    "article_regex_remove" : 
-    [
-        "(?:\\(Baca.*?\\))",
-        "(?:<div.+class=\"video\".*?<\\/div>)",
-        "(?:<strong>[\\s\\[]*Baca.*?>)"
-    ],
     "noox_config":
     {
         "db_sitename": "Liputan 6",

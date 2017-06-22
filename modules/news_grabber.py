@@ -32,6 +32,8 @@ class NewsGrabber:
         self._is_verbose = verbose
         self.__cur_url = None
         self.__verboseprint = print if self._is_verbose or self._is_debug else lambda *a, **k: None
+
+        # to optimize the BeautifulSoup, tell the BeautifulSoup only to parse certain elements
         self.__soup_strainer = SoupStrainer(self._find_item(self._config['to_extract'], 'tag'))
 
     def process(self, url_list, url_check_callback=None):
@@ -76,6 +78,7 @@ class NewsGrabber:
                 data = self.extract_soup(soup, self._config['to_extract'])
 
                 if data == 61:
+                    # if required data is not found, don't put it to the result
                     if self._is_debug:
                         raise ValueError('[DEBUG] returned data is {0}, expected dict type'.format(data))
                     else:
@@ -85,17 +88,34 @@ class NewsGrabber:
         return ret
 
     def extract_soup(self, soup, config):
+        """
+        Extract a content from soup object recursively. The function will assume key with string 'container' is a wrapper object of extraction target data.
+        note that 61 is treated as fatal error. Number 61 is based on C errno.h. Number 61 will be returned if required data is not found or failed to extract.
+
+        :param soup BeautifulSoup: soup to iterate
+        :param config dict: list of item to extract and its wrapper
+        :rtype: dict
+        """
         data = {}
         for el in config:
+            # when 'save' key is found, attempt to extract the content
             if el == 'save':
                 if isinstance(config[el], list):
+                    # if there are several elements to extract inside a wrapper, iterate each extraction target
                     for toSave in config[el]:
+                        # pass the wrapper and element extraction config
                         contents = self._get_content(soup, toSave)
                         if contents == 61:
+                            # if the required element is not found, immediately return 61 value
                             print('[WARNING] url: "{0}" does not have required element: "{1}"'.format(self.__cur_url, toSave['as']))
                             return 61
                         if contents is None:
-                            self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, toSave['as']))
+                            if 'default' in toSave and len(toSave['default']) > 0:
+                                # if the content is not required ('required': false) and default value is supplied, we use the supplied default value
+                                self.__verboseprint('[INFO] url: "{0}", element: "{1}" is using default value: "{2}"'.format(self.__cur_url, toSave['as'], toSave['default']))
+                                contents = toSave['default']
+                            else:
+                                self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, toSave['as']))
                         data.update({toSave['as']: contents})
                 if isinstance(config[el], dict):
                     contents = self._get_content(soup, config[el])
@@ -103,9 +123,14 @@ class NewsGrabber:
                         print('[WARNING] url: "{0}" does not have required element: "{1}"'.format(self.__cur_url, config[el]['as']))
                         return 61
                     if contents is None:
-                        self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, config[el]['as']))
+                        if 'default' in config[el] and len(config[el]['default']) > 0:
+                            self.__verboseprint('[INFO] url: "{0}", element: "{1}" is using default value: "{2}"'.format(self.__cur_url, config[el]['as'], config[el]['default']))
+                            contents = config[el]['default']
+                        else:
+                            self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, config[el]['as']))
                     data.update({config[el]['as']: contents})
             elif 'container' in el:
+                # if we found a '*container*' key (img_container, title_container, etc.), explore the container
                 if not isinstance(config[el], dict):
                     raise TypeError('In key: "{0}"; key content is expected to be dict type. (*container* is considered as wrapper tag)')
 
@@ -114,6 +139,7 @@ class NewsGrabber:
                 else:
                     bsTag = soup.find(config[el]["tag"])
 
+                # pass the new wrapper and partial configuration to the function
                 datas = self.extract_soup(bsTag, config[el])
                 if datas == 61:
                     return 61
@@ -121,6 +147,12 @@ class NewsGrabber:
         return data
 
     def _get_content(self, bsTag, config):
+        """
+        Save an element inside a BeautifulSoup tag object.
+        :param bsTag Tag: BeautifulSoup tag object
+        :param config dict: definition of element to save (with its formatting, if exist)
+        :rtype: str
+        """
         ret = None
         if bsTag is None:
             if 'required' not in config or config['required']:
@@ -161,9 +193,22 @@ class NewsGrabber:
                     ret = tag.get_text()
         else:
             raise TypeError('config parameter is expected to be type of dict')
+
+        if ret is None or len(ret) < 1:
+            if 'required' not in config or config['required']:
+                return 61
+            else:
+                return None
         return ret
 
     def _format_content(self, bsTag, config, save_attr=None):
+        """
+        Format the extracted content according to the config.
+        :param bsTag Tag: BeautifulSoup tag object
+        :param config dict: formatting configuration
+        :param save_attr str: extract the target element attribute instead of content
+        :rtype: str
+        """
         if 'type' in config and config['type'] == 'title':
             return bsTag[save_attr].title() if isinstance(save_attr, str) else bsTag.get_text().title()
         elif 'type' in config and config['type'] == 'date':
@@ -172,6 +217,7 @@ class NewsGrabber:
             return bsTag.get_text()
 
         if "bs_remove" in config and len(config["bs_remove"]) > 0:
+            # it is possible to only use bs_remove in format dict
             for def_ in config["bs_remove"]:
                 if 'attr' in def_:
                     if len(def_['attr_val']) < 1:
@@ -183,12 +229,15 @@ class NewsGrabber:
                     el.decompose()
 
         if "regex_capture" in config and len(config["regex_capture"]) > 0:
+            # this function only capture first capture group in the regex
             text = bsTag[save_attr] if isinstance(save_attr, str) else bsTag.get_text()
             cap_regex = re.compile(config["regex_capture"])
             cap = cap_regex.search(text).group(1)
+            # if the extracted content is title, return the string with capitalized first char in each word
             return cap if "regex_capture_title" not in config or not config['regex_capture_title'] else cap.title()
 
         if 'regex_remove' in config or 'replace' in config:
+            # when entering this, the function will process raw tag content (with html tags)
             regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
             # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
             if "regex_remove" in config:
@@ -304,6 +353,12 @@ class NewsGrabber:
             return None
 
     def _find_item(self, obj, key):
+        """
+        Recursively find the value certain key inside a dict. Returned value will be distinct.
+        :param obj dict: dictionary to iterate
+        :param key str: key to find
+        :rtype: list
+        """
         ret = []
         if isinstance(obj, dict):
             if key in obj:

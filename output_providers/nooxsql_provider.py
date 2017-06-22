@@ -80,7 +80,7 @@ class NooxSqlProvider(BaseProvider):
 
     def _get_md5(self, string: str):
         m = hashlib.md5()
-        m.update(string.encode('utf8'))
+        m.update(re.sub(r'https?://', '', string).encode('utf8'))
         return m.hexdigest()
 
     def _get_noox_categories(self):
