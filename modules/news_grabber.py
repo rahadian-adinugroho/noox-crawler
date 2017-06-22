@@ -239,7 +239,7 @@ class NewsGrabber:
                     data.update({config[el]['as']: contents})
             elif 'container' in el:
                 if not isinstance(config[el], dict):
-                    raise TypeError('In: "{0}"; wrapper value is expected to be dict type. (*container* is considered as wrapper tag)')
+                    raise TypeError('In key: "{0}"; key content is expected to be dict type. (*container* is considered as wrapper tag)')
 
                 if 'attr' in config[el] and config[el]['attr'] is not None:
                     bsTag = soup.find(config[el]["tag"], {config[el]["attr"]: re.compile(config[el]["attr_val"])})
