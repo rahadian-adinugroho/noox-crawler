@@ -108,7 +108,7 @@ class NewsGrabber:
                         date = soup.find(self._config["date_tag"], {self._config["date_attr"]: re.compile(self._config["date_attr_val"])}).get_text()
                     else:
                         date = soup.find(self._config["date_tag"]).get_text()
-                    sqlDate = self._date_parser(date)
+                    sqlDate = self._date_parser(date, self._config)
                     if sqlDate is None:
                         print('url "{0}" date is "{1}"'.format(url, sqlDate))
                         if self._is_debug:
@@ -185,6 +185,10 @@ class NewsGrabber:
                     article_tag = soup.find(self._config["article_tag"], {self._config["article_attr"]: re.compile(self._config["article_attr_val"])})
                 else:
                     article_tag = soup.find(self._config["article_tag"])
+
+                if article_tag is None:
+                    print('url "{0}" article tag not found'.format(url))
+                    continue
 
                 if "article_bs_remove" in self._config and len(self._config["article_bs_remove"]) > 0:
                     for def_ in self._config["article_bs_remove"]:
