@@ -32,6 +32,8 @@ class NewsGrabber:
         self._is_verbose = verbose
         self.__cur_url = None
         self.__verboseprint = print if self._is_verbose or self._is_debug else lambda *a, **k: None
+
+        # to optimize the BeautifulSoup, tell the BeautifulSoup only to parse certain elements
         self.__soup_strainer = SoupStrainer(self._find_item(self._config['to_extract'], 'tag'))
 
     def process(self, url_list, url_check_callback=None):
@@ -76,6 +78,7 @@ class NewsGrabber:
                 data = self.extract_soup(soup, self._config['to_extract'])
 
                 if data == 61:
+                    # if required data is not found, don't put it to the result
                     if self._is_debug:
                         raise ValueError('[DEBUG] returned data is {0}, expected dict type'.format(data))
                     else:
@@ -95,11 +98,15 @@ class NewsGrabber:
         """
         data = {}
         for el in config:
+            # when 'save' key is found, attempt to extract the content
             if el == 'save':
                 if isinstance(config[el], list):
+                    # if there are several elements to extract inside a wrapper, iterate each extraction target
                     for toSave in config[el]:
+                        # pass the wrapper and element extraction config
                         contents = self._get_content(soup, toSave)
                         if contents == 61:
+                            # if the required element is not found, immediately return 61 value
                             print('[WARNING] url: "{0}" does not have required element: "{1}"'.format(self.__cur_url, toSave['as']))
                             return 61
                         if contents is None:
@@ -114,6 +121,7 @@ class NewsGrabber:
                         self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, config[el]['as']))
                     data.update({config[el]['as']: contents})
             elif 'container' in el:
+                # if we found a '*container*' key (img_container, title_container, etc.), explore the container
                 if not isinstance(config[el], dict):
                     raise TypeError('In key: "{0}"; key content is expected to be dict type. (*container* is considered as wrapper tag)')
 
@@ -122,6 +130,7 @@ class NewsGrabber:
                 else:
                     bsTag = soup.find(config[el]["tag"])
 
+                # pass the new wrapper and partial configuration to the function
                 datas = self.extract_soup(bsTag, config[el])
                 if datas == 61:
                     return 61
@@ -193,6 +202,7 @@ class NewsGrabber:
             return bsTag.get_text()
 
         if "bs_remove" in config and len(config["bs_remove"]) > 0:
+            # it is possible to only use bs_remove in format dict
             for def_ in config["bs_remove"]:
                 if 'attr' in def_:
                     if len(def_['attr_val']) < 1:
@@ -204,12 +214,15 @@ class NewsGrabber:
                     el.decompose()
 
         if "regex_capture" in config and len(config["regex_capture"]) > 0:
+            # this function only capture first capture group in the regex
             text = bsTag[save_attr] if isinstance(save_attr, str) else bsTag.get_text()
             cap_regex = re.compile(config["regex_capture"])
             cap = cap_regex.search(text).group(1)
+            # if the extracted content is title, return the string with capitalized first char in each word
             return cap if "regex_capture_title" not in config or not config['regex_capture_title'] else cap.title()
 
         if 'regex_remove' in config or 'replace' in config:
+            # when entering this, the function will process raw tag content (with html tags)
             regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
             # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
             if "regex_remove" in config:
