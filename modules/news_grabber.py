@@ -30,20 +30,11 @@ class NewsGrabber:
         self._config = config
         self._is_debug = debug
         self._is_verbose = verbose
+        self.__cur_url = None
         self.__verboseprint = print if self._is_verbose or self._is_debug else lambda *a, **k: None
 
-        regex = self._base_regex
-        # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
-        if "article_regex_remove" in self._config:
-            regex += '|'+'|'.join(self._config["article_regex_remove"])
-
-        # if regex to replace tag is not empty, add it to the exception list.
-        if "article_tag_replace" in self._config:
-            self._config["article_tag_replace"].update(self._spc_chars)
-            regex += '|'+''.join(map(lambda tag: '(?!'+re.escape(tag)+')', self._config["article_tag_replace"]))+r'(?:<\/?(?:\s|\S)*?>)'
-        else:
-            regex += '|'+r'(<\/?(\s|\S)*?>)'
-        self.__compiled_regex = re.compile(regex)
+        # to optimize the BeautifulSoup, tell the BeautifulSoup only to parse certain elements
+        self.__soup_strainer = SoupStrainer(self._find_item(self._config['to_extract'], 'tag'))
 
     def process(self, url_list, url_check_callback=None):
         """
@@ -74,151 +65,205 @@ class NewsGrabber:
                     buffer_ = [url for url in buffer_ if url not in toRemove]
 
             # after the buffer is full and the news is not in the database, retrieve the data
-            for url in buffer_:
-                self.__verboseprint('Extracting: "{0}"'.format(url))
+            for self.__cur_url in buffer_:
+                self.__verboseprint('Extracting: "{0}"'.format(self.__cur_url))
                 try:
-                    req_data = requests.get(url, self._header)
+                    req_data = requests.get(self.__cur_url, self._header)
                 except Exception as e:
                     continue
 
-                tags = []
-                tags.append(self._config["title_tag"])
-                tags.append(self._config["date_tag"])
-                tags.append(self._config["article_tag"])
-                tags.append(self._config["author_tag"])
-                if not (self._config['img_wrapper_tag'] is None or len(self._config['img_wrapper_tag']) < 1):
-                    tags.append(self._config['img_wrapper_tag'])
-                tags.append("img")
-                soup = BeautifulSoup(req_data.text, 'lxml', parse_only=SoupStrainer(tags))
+                # find tag
+                soup = BeautifulSoup(req_data.text, 'lxml', parse_only=self.__soup_strainer)
 
-                try:
-                    if "title_attr" in self._config and self._config["title_attr"] is not None:
-                        title = soup.find(self._config["title_tag"], {self._config["title_attr"]: re.compile(self._config["title_attr_val"])}).get_text()
-                    else:
-                        title = soup.find(self._config["title_tag"]).get_text()
-                except Exception as e:
-                    print('unable to scan "{0}" because "{1}"'.format(url, str(e)))
+                data = self.extract_soup(soup, self._config['to_extract'])
+
+                if data == 61:
+                    # if required data is not found, don't put it to the result
                     if self._is_debug:
-                        raise RuntimeError('DEBUG: Title extraction error.')
-                    continue
-
-                if title is None or len(title) < 5:
-                    print('url "{0}" title is "{1}"'.format(url, title))
-                    if self._is_debug:
-                        raise RuntimeError('DEBUG: Title extraction error.')
-                    continue
-
-                try:
-                    if "date_attr" in self._config and self._config["date_attr"] is not None:
-                        date = soup.find(self._config["date_tag"], {self._config["date_attr"]: re.compile(self._config["date_attr_val"])}).get_text()
+                        raise ValueError('[DEBUG] returned data is {0}, expected dict type'.format(data))
                     else:
-                        date = soup.find(self._config["date_tag"]).get_text()
-                    sqlDate = self._date_parser(date)
-                    if sqlDate is None:
-                        print('url "{0}" date is "{1}"'.format(url, sqlDate))
-                        if self._is_debug:
-                            raise RuntimeError('DEBUG: Date extraction error.')
                         continue
-                except Exception as e:
-                    print('unable to scan "{0}" because "{1}"'.format(url, str(e)))
-                    if self._is_debug:
-                        raise RuntimeError('DEBUG: Date extraction error.')
-                    continue
-
-                # if prioritize wrapper or img_tag_attr is empty or null, use wrapper immediately
-                if self._config['img_tag_src_attr'] is not None and len(self._config['img_tag_src_attr']) > 0:
-                    src_attr = self._config['img_tag_src_attr']
-                else:
-                    src_attr = 'src'
-
-                img_url = None
-                if self._config['prioritize_wrapper'] or (self._config['img_tag_attr'] is None or len(self._config['img_tag_attr']) < 1):
-                    if "img_wrapper_attr" in self._config and self._config["img_wrapper_attr"] is not None:
-                        wrapper = soup.find(self._config["img_wrapper_tag"], {self._config["img_wrapper_attr"]: re.compile(self._config["img_wrapper_attr_val"])})
-                    else:
-                        wrapper = soup.find(self._config["img_wrapper_tag"])
-
-                    if wrapper is not None:
-                        img_tags = wrapper.find_all('img')
-
-                    if img_tags is not None:
-                        for img_tag in img_tags:
-                            if img_tag.has_attr(src_attr):
-                                img_url = img_tag[src_attr]
-                                break
-                else:
-                    img_tag = soup.find('img', {self._config["img_tag_attr"]: re.compile(self._config["img_tag_attr_val"])})
-                    if img_tag is not None and img_tag.has_attr(src_attr):
-                        img_url = img_tag[src_attr]
-                if img_url is None or len(img_url) < 5:
-                    if self._config['allow_no_image']:
-                        self.__verboseprint('No img_url for {0}'.format(url))
-                        img_url = None
-                    else:
-                        print('Skipping to scan "{0}" because no img_url'.format(url))
-                        if self._is_debug:
-                            raise RuntimeError('DEBUG: Image url extraction error.')
-                        continue
-
-                try:
-                    if "author_attr" in self._config and self._config["author_attr"] is not None:
-                        author = soup.find(self._config["author_tag"], {self._config["author_attr"]: re.compile(self._config["author_attr_val"])}).get_text()
-                    else:
-                        author = soup.find(self._config["author_tag"]).get_text()
-                    if author is None or len(author) < 5:
-                        if self._config['allow_default_author']:
-                            self.__verboseprint('Using default author name...')
-                            author = self._config['default_author_name']
-                        else:
-                            print('url "{0}" author is "{1}"'.format(url, author))
-                            continue
-                    if 'author_regex' in self._config and len(self._config['author_regex']) > 0:
-                        author_regex = re.compile(self._config['author_regex'])
-                        author = author_regex.search(author).group(1)
-                        author = author.title()
-                except Exception as e:
-                    if self._config['allow_default_author']:
-                        self.__verboseprint('Using default author name...')
-                        author = self._config['default_author_name']
-                    else:
-                        print('unable to scan "{0}" because author is: "{1}"'.format(url, str(e)))
-                        if self._is_debug:
-                            raise RuntimeError('DEBUG: Author extraction error.')
-                        continue
-
-                if "article_attr" in self._config:
-                    article_parts = soup.find_all(self._config["article_tag"], {self._config["article_attr"]: re.compile(self._config["article_attr_val"])})
-                else:
-                    article_parts = soup.find_all(self._config["article_tag"])
-
-                if "article_bs_remove" in self._config and len(self._config["article_bs_remove"]) > 0:
-                    for i, item in enumerate(article_parts):
-                        for def_ in self._config["article_bs_remove"]:
-                            if 'attr' in def_:
-                                if len(def_['attr_val']) < 1:
-                                    raise ValueError('attr_val is empty')
-                                elements = article_parts[i].find_all(def_['tag'], {def_['attr']: re.compile(def_['attr_val'])})
-                            else:
-                                elements = article_parts[i].find_all(def_['tag'])
-                            for el in elements:
-                                el.decompose()
-
-                article = ''
-                for part in article_parts:
-                    cleantext = re.sub(self.__compiled_regex, '', str(part))
-
-                    if "article_tag_replace" in self._config:
-                        article += self._multireplace(cleantext, self._config["article_tag_replace"])
-                    else:
-                        article += self._multireplace(cleantext, spc_chars)
-                article = re.sub(r"(?:<br\/?>){3,}", '<br><br>', article)
-                if article is None or len(article) < 200:
-                    print('url "{0}" content is "{1}"'.format(url, article))
-                    continue
-                # print(article)
-                ret.append({'title': title, 'url': url, 'author': author, 'pubtime': sqlDate, 'content': article, 'img_url': img_url})
-                # print({'title': title, 'text': article})
+                data.update({'url': self.__cur_url})
+                ret.append(data)
         return ret
+
+    def extract_soup(self, soup, config):
+        """
+        Extract a content from soup object recursively. The function will assume key with string 'container' is a wrapper object of extraction target data.
+        note that 61 is treated as fatal error. Number 61 is based on C errno.h. Number 61 will be returned if required data is not found or failed to extract.
+
+        :param soup BeautifulSoup: soup to iterate
+        :param config dict: list of item to extract and its wrapper
+        :rtype: dict
+        """
+        data = {}
+        for el in config:
+            # when 'save' key is found, attempt to extract the content
+            if el == 'save':
+                if isinstance(config[el], list):
+                    # if there are several elements to extract inside a wrapper, iterate each extraction target
+                    for toSave in config[el]:
+                        # pass the wrapper and element extraction config
+                        contents = self._get_content(soup, toSave)
+                        if contents == 61:
+                            # if the required element is not found, immediately return 61 value
+                            print('[WARNING] url: "{0}" does not have required element: "{1}"'.format(self.__cur_url, toSave['as']))
+                            return 61
+                        if contents is None:
+                            if 'default' in toSave and len(toSave['default']) > 0:
+                                # if the content is not required ('required': false) and default value is supplied, we use the supplied default value
+                                self.__verboseprint('[INFO] url: "{0}", element: "{1}" is using default value: "{2}"'.format(self.__cur_url, toSave['as'], toSave['default']))
+                                contents = toSave['default']
+                            else:
+                                self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, toSave['as']))
+                        data.update({toSave['as']: contents})
+                if isinstance(config[el], dict):
+                    contents = self._get_content(soup, config[el])
+                    if contents == 61:
+                        print('[WARNING] url: "{0}" does not have required element: "{1}"'.format(self.__cur_url, config[el]['as']))
+                        return 61
+                    if contents is None:
+                        if 'default' in config[el] and len(config[el]['default']) > 0:
+                            self.__verboseprint('[INFO] url: "{0}", element: "{1}" is using default value: "{2}"'.format(self.__cur_url, config[el]['as'], config[el]['default']))
+                            contents = config[el]['default']
+                        else:
+                            self.__verboseprint('[INFO] url: "{0}", element: "{1}" value is none'.format(self.__cur_url, config[el]['as']))
+                    data.update({config[el]['as']: contents})
+            elif 'container' in el:
+                # if we found a '*container*' key (img_container, title_container, etc.), explore the container
+                if not isinstance(config[el], dict):
+                    raise TypeError('In key: "{0}"; key content is expected to be dict type. (*container* is considered as wrapper tag)')
+
+                if 'attr' in config[el] and config[el]['attr'] is not None:
+                    bsTag = soup.find(config[el]["tag"], {config[el]["attr"]: re.compile(config[el]["attr_val"])})
+                else:
+                    bsTag = soup.find(config[el]["tag"])
+
+                # pass the new wrapper and partial configuration to the function
+                datas = self.extract_soup(bsTag, config[el])
+                if datas == 61:
+                    return 61
+                data.update(datas)
+        return data
+
+    def _get_content(self, bsTag, config):
+        """
+        Save an element inside a BeautifulSoup tag object.
+        :param bsTag Tag: BeautifulSoup tag object
+        :param config dict: definition of element to save (with its formatting, if exist)
+        :rtype: str
+        """
+        ret = None
+        if bsTag is None:
+            if 'required' not in config or config['required']:
+                # the container does not exist in the first place
+                # ENODATA value
+                print('[ERROR] container does not exist')
+                return 61
+            else:
+                return None
+        if isinstance(config, dict):
+            # find the tag from the soup
+            if 'attr' in config and config['attr'] is not None:
+                tag = bsTag.find(config["tag"], {config["attr"]: re.compile(config["attr_val"])})
+            else:
+                tag = bsTag.find(config["tag"])
+
+            if 'save_attr' in config:
+                # save attribute value instead of tag content
+                if tag is None or not tag.has_attr(config['save_attr']):
+                    if 'required' not in config or config['required']:
+                        # required is not defined or element is required
+                        # ENODATA value
+                        return 61
+                    return ret
+                if 'format' in config and config['format'] is not None:
+                    ret = self._format_content(tag, config['format'], save_attr=config['save_attr'])
+                else:
+                    ret = tag[config['save_attr']]
+            else:
+                if tag is None:
+                    if 'required' not in config or config['required']:
+                        # ENODATA value
+                        return 61
+                    return ret
+                if 'format' in config and config['format'] is not None:
+                    ret = self._format_content(tag, config['format'])
+                else:
+                    ret = tag.get_text()
+        else:
+            raise TypeError('config parameter is expected to be type of dict')
+
+        if ret is None or len(ret) < 1:
+            if 'required' not in config or config['required']:
+                return 61
+            else:
+                return None
+        return ret
+
+    def _format_content(self, bsTag, config, save_attr=None):
+        """
+        Format the extracted content according to the config.
+        :param bsTag Tag: BeautifulSoup tag object
+        :param config dict: formatting configuration
+        :param save_attr str: extract the target element attribute instead of content
+        :rtype: str
+        """
+        if 'type' in config and config['type'] == 'title':
+            return bsTag[save_attr].title() if isinstance(save_attr, str) else bsTag.get_text().title()
+        elif 'type' in config and config['type'] == 'date':
+            return self._date_parser(bsTag[save_attr] if isinstance(save_attr, str) else bsTag.get_text(), config)
+        elif 'type' in config and config['type'] == 'get_text':
+            return bsTag.get_text()
+
+        if "bs_remove" in config and len(config["bs_remove"]) > 0:
+            # it is possible to only use bs_remove in format dict
+            for def_ in config["bs_remove"]:
+                if 'attr' in def_:
+                    if len(def_['attr_val']) < 1:
+                        raise ValueError('attr_val is empty')
+                    elements = bsTag.find_all(def_['tag'], {def_['attr']: re.compile(def_['attr_val'])})
+                else:
+                    elements = bsTag.find_all(def_['tag'])
+                for el in elements:
+                    el.decompose()
+
+        if "regex_capture" in config and len(config["regex_capture"]) > 0:
+            # this function only capture first capture group in the regex
+            text = bsTag[save_attr] if isinstance(save_attr, str) else bsTag.get_text()
+            cap_regex = re.compile(config["regex_capture"])
+            cap = cap_regex.search(text).group(1)
+            # if the extracted content is title, return the string with capitalized first char in each word
+            return cap if "regex_capture_title" not in config or not config['regex_capture_title'] else cap.title()
+
+        if 'regex_remove' in config or 'replace' in config:
+            # when entering this, the function will process raw tag content (with html tags)
+            regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
+            # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
+            if "regex_remove" in config:
+                regex += '|'+'|'.join(config["regex_remove"])
+
+            # if regex to replace tag is not empty, add it to the exception list.
+            if "replace" in config:
+                config["replace"].update(self._spc_chars)
+                regex += '|'+''.join(map(lambda tag: '(?!'+re.escape(tag)+')', config["replace"]))+r'(?:<\/?(?:\s|\S)*?>)'
+            else:
+                regex += '|'+r'(<\/?(\s|\S)*?>)'
+            fin_regex = re.compile(regex)
+
+            cleantext = re.sub(fin_regex, '', str(bsTag))
+
+            if "replace" in config:
+                fin_text = self._multireplace(cleantext, config["replace"])
+            else:
+                fin_text = self._multireplace(cleantext, spc_chars)
+
+            fin_text = re.sub(r"(?:<br\/?>){3,}", '<br><br>', fin_text)
+            if 'type' in config and config['type'] == 'article' and len(fin_text) < 400:
+                print('[WARNING] url: "{0}" article is less than 250 characters'.format(self.__cur_url))
+                return 61
+            return fin_text
+        return str(bsTag)
 
     def _fill_buffer(self, buffer_, urls):
         """
@@ -231,7 +276,7 @@ class NewsGrabber:
             if self._config['sitename'] == self._get_domain_name(url):
                 buffer_ += [url]
 
-    def _date_parser(self, date):
+    def _date_parser(self, date, config):
         """
         Attempt to parse a date from a given string.
         :param date str: date to parse
@@ -284,17 +329,17 @@ class NewsGrabber:
             'nopember': '11',
             'desember': '12'
         }
-        if self._config["normalize_date"] is True:
+        if 'normalize_date' not in config or config["normalize_date"]:
             repl = {}
             repl.update(month)
             repl.update(shortMonth)
             repl.update(bulan)
             date = self._multireplace(date.lower(), repl)
-        if "date_regex" in self._config and len(self._config["date_regex"]) > 0:
-            reg = re.compile(self._config["date_regex"])
+        if "date_regex" in config and len(config["date_regex"]) > 0:
+            reg = re.compile(config["date_regex"])
             try:
                 matches = reg.search(date).groupdict()
-                date = '{y}/{m}/{d} {h}:{i}'.format_map(matches)
+                date = '{d}/{m}/{y} {h}:{i}'.format_map(matches)
             except Exception as e:
                 date = re.sub(r'[^0-9:\s\/\-]', '', date)
         else:
@@ -306,6 +351,31 @@ class NewsGrabber:
             return dateObj.strftime("%Y-%m-%d %H:%M:%S")
         except Exception as e:
             return None
+
+    def _find_item(self, obj, key):
+        """
+        Recursively find the value certain key inside a dict. Returned value will be distinct.
+        :param obj dict: dictionary to iterate
+        :param key str: key to find
+        :rtype: list
+        """
+        ret = []
+        if isinstance(obj, dict):
+            if key in obj:
+                ret.append(obj[key])
+            for i, d in obj.items():
+                item = self._find_item(d, key)
+                if len(item) > 0:
+                    ret = [v for v in item if v not in ret] + ret
+            return ret
+        elif isinstance(obj, list):
+            for d in obj:
+                item = self._find_item(d, key)
+                if len(item) > 0:
+                    ret = [v for v in item if v not in ret] + ret
+            return ret
+        else:
+            return ret
 
     def _multireplace(self, string, replacements):
         """

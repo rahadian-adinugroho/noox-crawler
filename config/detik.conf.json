@@ -4,78 +4,86 @@
     "sitemapindex_regex": "",
     "url_regex": "^(?:http|https)://([a-zA-Z]*)\\.detik\\.com(?!\\/infografis)(?!\\/suara)(?:.{,15}\\/read|.{,25}d-[0-9]+|.{25}\\/berita)\\/.+$",
     "crawl_depth": 1,
-    "elements": 
+    "to_extract": 
     {
-        "save": 
-        {
-            "tag": "h1",
-            "attr": null,
-            "attr_val": null,
-            "as": "title"
-        },
-        "element":
+        "save": [
+            {
+                "tag": "meta",
+                "attr": "property",
+                "attr_val": "og:title",
+                "save_attr": "content",
+                "as": "title"
+            },
+            {
+                "tag": "meta",
+                "attr": "name",
+                "attr_val": "publishdate",
+                "save_attr": "content",
+                "as": "pubtime",
+                "format":
+                {
+                    "type": "date",
+                    "normalize_date": false
+                }
+            },
+             {
+                "tag": "meta",
+                "attr": "name",
+                "attr_val": "author",
+                "save_attr": "content",
+                "as": "author"
+            },
+            {
+                "tag": "div",
+                "attr": "class",
+                "attr_val": "detail_text|text_detail",
+                "as": "content",
+                "format":
+                {
+                    "type": "article",
+                    "bs_remove": [
+                        {
+                            "tag": "div",
+                            "attr": "class",
+                            "attr_val": "box_hl wpgal |boxlr mt15"
+                        }
+                    ],
+                    "replace":
+                    {
+                        "<br>": "<br>",
+                        "<br/>": "<br/>",
+                        "<strong>": "<strong>",
+                        "</strong>": "</strong>",
+                        "<b>": "<b>",
+                        "</b>": "</b>",
+                        "<em>": "<em>",
+                        "</em>": "</em>"
+                    },
+                    "regex_remove":
+                    [
+                        "(?:<table.*?<\\/table>)",
+                        "(?:\\[.+?Video.*?\\])"
+                    ]
+                }
+            }
+        ],
+        "image_container": 
         {
             "tag": "div",
             "attr": "class",
             "attr_val": "pic_artikel|media_artikel",
-            "save":
-            {
-                "tag": "img",
-                "attr": null,
-                "attr_val": null,
-                "save_attr": "src",
-                "as": "img_url"
-            }
+            "save": [
+                {
+                    "tag": "img",
+                    "attr": null,
+                    "attr_val": null,
+                    "save_attr": "src",
+                    "as": "img_url",
+                    "required": false
+                }
+            ]
         }
     },
-    "title_tag": "h1",
-    "title_attr": null,
-    "title_attr_val": null,
-    "img_wrapper_tag": "div",
-    "img_wrapper_attr": "class",
-    "img_wrapper_attr_val": "pic_artikel|media_artikel",
-    "prioritize_wrapper": true,
-    "img_tag_attr": null,
-    "img_tag_attr_val": null,
-    "img_tag_src_attr": "src",
-    "allow_no_image": true,
-    "author_tag": ["div", "span"],
-    "author_attr": "class",
-    "author_attr_val": "author",
-    "author_regex": "((?:[a-zA-Z]+\\s)*[a-zA-Z]+)\\s+-",
-    "allow_default_author": false,
-    "default_author_name": null,
-    "date_tag": ["div", "span"],
-    "date_attr": "class",
-    "date_attr_val": "date",
-    "date_regex": "",
-    "normalize_date": true,
-    "article_tag": "div",
-    "article_attr": "class",
-    "article_attr_val": "detail_text|text_detail",
-    "article_bs_remove": [
-        {
-            "tag": "div",
-            "attr": "class",
-            "attr_val": "box_hl wpgal |boxlr mt15"
-        }
-    ],
-    "article_tag_replace": 
-    {
-        "<br>": "<br>",
-        "<br/>": "<br/>",
-        "<strong>" : "<strong>",
-        "</strong>" : "</strong>",
-        "<b>" : "<b>",
-        "</b>" : "</b>",
-        "<em>" : "<em>",
-        "</em>" : "</em>"
-    },
-    "article_regex_remove" : 
-    [
-        "(?:<table.*?<\\/table>)",
-        "(?:\\[.+?Video.*?\\])"
-    ],
     "noox_config":
     {
         "db_sitename": "Detik",
