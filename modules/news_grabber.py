@@ -278,7 +278,7 @@ class NewsGrabber:
                         return 61
                     return ret
                 if 'format' in config and config['format'] is not None:
-                    ret = self._format_content(tag, config['format'])
+                    ret = self._format_content(tag, config['format'], save_attr=config['save_attr'])
                 else:
                     ret = tag[config['save_attr']]
             else:
@@ -295,11 +295,11 @@ class NewsGrabber:
             raise TypeError('config parameter is expected to be type of dict')
         return ret
 
-    def _format_content(self, bsTag, config):
+    def _format_content(self, bsTag, config, save_attr=None):
         if 'type' in config and config['type'] == 'title':
-            return bsTag.get_text().title()
+            return bsTag[save_attr].title() if isinstance(save_attr, str) else bsTag.get_text().title()
         elif 'type' in config and config['type'] == 'date':
-            return self._date_parser(bsTag.get_text(), config)
+            return self._date_parser(bsTag[save_attr] if isinstance(save_attr, str) else bsTag.get_text(), config)
         elif 'type' in config and config['type'] == 'get_text':
             return bsTag.get_text()
 
@@ -315,7 +315,7 @@ class NewsGrabber:
                     el.decompose()
 
         if "regex_capture" in config and len(config["regex_capture"]) > 0:
-            text = bsTag.get_text()
+            text = bsTag[save_attr] if isinstance(save_attr, str) else bsTag.get_text()
             cap_regex = re.compile(config["regex_capture"])
             cap = cap_regex.search(text).group(1)
             return cap if "regex_capture_title" not in config or not config['regex_capture_title'] else cap.title()
