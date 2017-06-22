@@ -91,10 +91,17 @@ class NewsGrabber:
                 tags.append("img")
                 soup = BeautifulSoup(req_data.text, 'lxml', parse_only=SoupStrainer(tags))
 
-                if "title_attr" in self._config and self._config["title_attr"] is not None:
-                    title = soup.find(self._config["title_tag"], {self._config["title_attr"]: re.compile(self._config["title_attr_val"])}).get_text()
-                else:
-                    title = soup.find(self._config["title_tag"]).get_text()
+                try:
+                    if "title_attr" in self._config and self._config["title_attr"] is not None:
+                        title = soup.find(self._config["title_tag"], {self._config["title_attr"]: re.compile(self._config["title_attr_val"])}).get_text()
+                    else:
+                        title = soup.find(self._config["title_tag"]).get_text()
+                except Exception as e:
+                    print('unable to scan "{0}" because "{1}"'.format(url, str(e)))
+                    if self._is_debug:
+                        raise RuntimeError('DEBUG: Title extraction error.')
+                    continue
+
                 if title is None or len(title) < 5:
                     print('url "{0}" title is "{1}"'.format(url, title))
                     if self._is_debug:
