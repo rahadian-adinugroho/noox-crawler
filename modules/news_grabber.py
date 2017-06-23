@@ -1,7 +1,5 @@
 import re
 import requests
-import pymysql
-import hashlib
 from bs4 import BeautifulSoup, SoupStrainer
 from urllib.parse import urlparse
 from dateutil.parser import parser as dp
@@ -18,11 +16,6 @@ class NewsGrabber:
                 'Accept-Language': 'en-US,en;q =0.8',
                 'Connection': 'keep-alive'
             }
-
-    _spc_chars = {"\n": "", "\t": "", "\r": "", "\r\n": ""}
-
-    # remove script, style, and another tag.
-    _base_regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
 
     __verboseprint = None
 
@@ -239,13 +232,15 @@ class NewsGrabber:
         if 'regex_remove' in config or 'replace' in config:
             # when entering this, the function will process raw tag content (with html tags)
             regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
+
+            spc_chars = {"\n": "", "\t": "", "\r": "", "\r\n": ""}
             # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
             if "regex_remove" in config:
                 regex += '|'+'|'.join(config["regex_remove"])
 
             # if regex to replace tag is not empty, add it to the exception list.
             if "replace" in config:
-                config["replace"].update(self._spc_chars)
+                config["replace"].update(spc_chars)
                 regex += '|'+''.join(map(lambda tag: '(?!'+re.escape(tag)+')', config["replace"]))+r'(?:<\/?(?:\s|\S)*?>)'
             else:
                 regex += '|'+r'(<\/?(\s|\S)*?>)'
