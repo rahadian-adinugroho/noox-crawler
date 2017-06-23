@@ -32,7 +32,7 @@ def check_with_db(urls):
     in_p = ', '.join(map(lambda x: "'" + hashlib.md5(re.sub(r'https?://', '', x).encode('utf-8')).hexdigest() + "'", urls))
     sql = sql.format(in_p)
     cursor.execute(sql)
-    return [row[0] for row in cursor.fetchall()]
+    return [re.sub(r'https?://', '', row[0]) for row in cursor.fetchall()]
 
 
 def get_domain_name(url):
