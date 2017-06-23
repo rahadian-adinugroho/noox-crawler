@@ -187,7 +187,7 @@ class NewsGrabber:
         else:
             raise TypeError('config parameter is expected to be type of dict')
 
-        if ret is None or len(ret) < 1:
+        if not isinstance(ret, str) or len(ret) < 1:
             if 'required' not in config or config['required']:
                 return 61
             else:
