@@ -29,7 +29,7 @@ class NewsGrabber:
         # to optimize the BeautifulSoup, tell the BeautifulSoup only to parse certain elements
         self.__soup_strainer = SoupStrainer(self._find_item(self._config['to_extract'], 'tag'))
 
-    def process(self, url_list, url_check_callback=None):
+    def process(self, url_list, url_check_callback=None, url_check_trim_protocol=True):
         """
         Extract the content of the pages from given urls.
         :param url_list list: url to extract
@@ -55,7 +55,10 @@ class NewsGrabber:
                     # retrieve urls already in database
                     toRemove = url_check_callback(buffer_)
                     # we select url that is not in database yet
-                    buffer_ = [url for url in buffer_ if url not in toRemove]
+                    if url_check_trim_protocol:
+                        buffer_ = [url for url in buffer_ if re.sub(r'https?://', '', url) not in toRemove]
+                    else:
+                        buffer_ = [url for url in buffer_ if url not in toRemove]
 
             # after the buffer is full and the news is not in the database, retrieve the data
             for self.__cur_url in buffer_:
