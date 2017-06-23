@@ -1,7 +1,5 @@
 import re
 import requests
-import pymysql
-import hashlib
 from bs4 import BeautifulSoup, SoupStrainer
 from urllib.parse import urlparse
 from dateutil.parser import parser as dp
@@ -19,11 +17,6 @@ class NewsGrabber:
                 'Connection': 'keep-alive'
             }
 
-    _spc_chars = {"\n": "", "\t": "", "\r": "", "\r\n": ""}
-
-    # remove script, style, and another tag.
-    _base_regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
-
     __verboseprint = None
 
     def __init__(self, config, debug=False, verbose=False):
@@ -36,7 +29,7 @@ class NewsGrabber:
         # to optimize the BeautifulSoup, tell the BeautifulSoup only to parse certain elements
         self.__soup_strainer = SoupStrainer(self._find_item(self._config['to_extract'], 'tag'))
 
-    def process(self, url_list, url_check_callback=None):
+    def process(self, url_list, url_check_callback=None, url_check_trim_protocol=True):
         """
         Extract the content of the pages from given urls.
         :param url_list list: url to extract
@@ -62,7 +55,10 @@ class NewsGrabber:
                     # retrieve urls already in database
                     toRemove = url_check_callback(buffer_)
                     # we select url that is not in database yet
-                    buffer_ = [url for url in buffer_ if url not in toRemove]
+                    if url_check_trim_protocol:
+                        buffer_ = [url for url in buffer_ if re.sub(r'https?://', '', url) not in toRemove]
+                    else:
+                        buffer_ = [url for url in buffer_ if url not in toRemove]
 
             # after the buffer is full and the news is not in the database, retrieve the data
             for self.__cur_url in buffer_:
@@ -194,7 +190,7 @@ class NewsGrabber:
         else:
             raise TypeError('config parameter is expected to be type of dict')
 
-        if ret is None or len(ret) < 1:
+        if not isinstance(ret, str) or len(ret) < 1:
             if 'required' not in config or config['required']:
                 return 61
             else:
@@ -239,13 +235,15 @@ class NewsGrabber:
         if 'regex_remove' in config or 'replace' in config:
             # when entering this, the function will process raw tag content (with html tags)
             regex = r'(?:<script(?:\s|\S)*?<\/script>)|(?:<style(?:\s|\S)*?<\/style>)|(?:<!--(?:\s|\S)*?-->)'
+
+            spc_chars = {"\n": "", "\t": "", "\r": "", "\r\n": ""}
             # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
             if "regex_remove" in config:
                 regex += '|'+'|'.join(config["regex_remove"])
 
             # if regex to replace tag is not empty, add it to the exception list.
             if "replace" in config:
-                config["replace"].update(self._spc_chars)
+                config["replace"].update(spc_chars)
                 regex += '|'+''.join(map(lambda tag: '(?!'+re.escape(tag)+')', config["replace"]))+r'(?:<\/?(?:\s|\S)*?>)'
             else:
                 regex += '|'+r'(<\/?(\s|\S)*?>)'

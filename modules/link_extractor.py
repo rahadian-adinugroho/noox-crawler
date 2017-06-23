@@ -53,7 +53,7 @@ class LinkExtractor:
         regex = re.compile(self._config['url_regex'])
 
         depth = 0
-
+        links_np = set()
         while self._edges and (not max_link or len(self._links) < max_link):
             edge = self._edges.popleft()
             self.__verboseprint('Retrieving data from "'+edge+'"')
@@ -75,16 +75,20 @@ class LinkExtractor:
                     self.__verboseprint('Got sitemap...')
                     for loc in BeautifulSoup(page.text, 'lxml-xml', parse_only=SoupStrainer('loc')):
                         url = loc.get_text().strip()
-                        if regex.match(url) and url not in self._links:
+                        url_np = re.sub(r'https?://', '', url)
+                        if regex.match(url) and url_np not in links_np:
                             self._links.append(url)
+                            links_np.add(url_np)
                             if depth < max_depth:
                                 self._edges.append(url)
                 else:
                     # if we got a html page, extract the a tag with href matching with regex
                     soup = BeautifulSoup(page.text, 'lxml', parse_only=SoupStrainer('a', attrs={'href': regex}))
                     for url in soup.find_all('a'):
-                        if url['href'] not in self._links:
+                        url_np = re.sub(r'https?://', '', url['href'])
+                        if url_np not in links_np:
                             self._links.append(url['href'])
+                            links_np.add(url_np)
                             if depth < max_depth:
                                 self._edges.append(url['href'])
             depth += 1
