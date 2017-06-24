@@ -1,5 +1,6 @@
 import requests
 import re
+from urllib.parse import urlparse
 from collections import deque
 from bs4 import BeautifulSoup, SoupStrainer
 
@@ -74,7 +75,7 @@ class LinkExtractor:
                 if self._is_sitemap(page):
                     self.__verboseprint('Got sitemap...')
                     for loc in BeautifulSoup(page.text, 'lxml-xml', parse_only=SoupStrainer('loc')):
-                        url = loc.get_text().strip()
+                        url = self._trim_url_query(loc.get_text().strip())
                         url_np = re.sub(r'https?://', '', url)
                         if regex.match(url) and url_np not in links_np:
                             self._links.append(url)
@@ -84,13 +85,14 @@ class LinkExtractor:
                 else:
                     # if we got a html page, extract the a tag with href matching with regex
                     soup = BeautifulSoup(page.text, 'lxml', parse_only=SoupStrainer('a', attrs={'href': regex}))
-                    for url in soup.find_all('a'):
-                        url_np = re.sub(r'https?://', '', url['href'])
+                    for tag in soup.find_all('a'):
+                        url = self._trim_url_query(tag['href'])
+                        url_np = re.sub(r'https?://', '', url)
                         if url_np not in links_np:
-                            self._links.append(url['href'])
+                            self._links.append(url)
                             links_np.add(url_np)
                             if depth < max_depth:
-                                self._edges.append(url['href'])
+                                self._edges.append(url)
             depth += 1
 
         return self._links
@@ -118,3 +120,13 @@ class LinkExtractor:
             raise ValueError('The supplied argument is not a requests.models.Response instance.')
         soup = BeautifulSoup(page.text, 'lxml-xml', parse_only=SoupStrainer('urlset'))
         return str(soup.find('urlset')) != 'None'
+
+    def _trim_url_query(self, url: str):
+        """
+        Remove query from given url.
+
+        :param url str: url to process
+        :rtype: str
+        """
+        o = urlparse(url)
+        return o.scheme + "://" + o.netloc + o.path
