@@ -345,7 +345,8 @@ class NewsGrabber:
 
         try:
             parser = dp()
-            dateObj = parser.parse(date, dayfirst=True)
+            df = True if 'day_first' not in config or config['day_first'] else False
+            dateObj = parser.parse(date, dayfirst=df)
             return dateObj.strftime("%Y-%m-%d %H:%M:%S")
         except Exception as e:
             return None
