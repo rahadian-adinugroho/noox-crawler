@@ -238,11 +238,11 @@ class NewsGrabber:
 
             spc_chars = {"\n": "", "\t": "", "\r": "", "\r\n": ""}
             # if regex to remove tag is not empty, add it to the base regex with | (or) separator.
-            if "regex_remove" in config:
+            if "regex_remove" in config and config['regex_remove']:
                 regex += '|'+'|'.join(config["regex_remove"])
 
             # if regex to replace tag is not empty, add it to the exception list.
-            if "replace" in config:
+            if "replace" in config and config['replace']:
                 config["replace"].update(spc_chars)
                 regex += '|'+''.join(map(lambda tag: '(?!'+re.escape(tag)+')', config["replace"]))+r'(?:<\/?(?:\s|\S)*?>)'
             else:
@@ -256,10 +256,12 @@ class NewsGrabber:
             else:
                 fin_text = self._multireplace(cleantext, spc_chars)
 
-            fin_text = re.sub(r"(?:<br\/?>){3,}", '<br><br>', fin_text)
-            if 'type' in config and config['type'] == 'article' and len(fin_text) < 400:
-                print('[WARNING] url: "{0}" article is less than 250 characters'.format(self.__cur_url))
-                return 61
+            if 'type' in config and config['type'] == 'article':
+                fin_text = re.sub(r"(?:(?:\s|(?:<\w+></\w+>))*?<br\/?>){3,}", '<br><br>', fin_text)
+                if len(fin_text) < 400:
+                    print('[WARNING] url: "{0}" article is less than 400 characters'.format(self.__cur_url))
+                    return 61
+
             return fin_text
         return str(bsTag)
 
