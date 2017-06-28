@@ -1,5 +1,6 @@
 import re
 import requests
+import copy
 from bs4 import BeautifulSoup, SoupStrainer
 from urllib.parse import urlparse
 from dateutil.parser import parser as dp
@@ -175,7 +176,7 @@ class NewsGrabber:
                         return 61
                     return ret
                 if 'format' in config and config['format'] is not None:
-                    ret = self._format_content(tag, config['format'], save_attr=config['save_attr'])
+                    ret = self._format_content(copy.copy(tag), config['format'], save_attr=config['save_attr'])
                 else:
                     ret = tag[config['save_attr']]
             else:
@@ -185,7 +186,7 @@ class NewsGrabber:
                         return 61
                     return ret
                 if 'format' in config and config['format'] is not None:
-                    ret = self._format_content(tag, config['format'])
+                    ret = self._format_content(copy.copy(tag), config['format'])
                 else:
                     ret = tag.get_text()
         else:
