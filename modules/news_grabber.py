@@ -25,6 +25,7 @@ class NewsGrabber:
         self._is_verbose = verbose
         self.__cur_url = None
         self.__verboseprint = print if self._is_verbose or self._is_debug else lambda *a, **k: None
+        self.__debugprint = print if self._is_debug else lambda *a, **k: None
 
         # to optimize the BeautifulSoup, tell the BeautifulSoup only to parse certain elements
         self.__soup_strainer = SoupStrainer(self._find_item(self._config['to_extract'], 'tag'))
@@ -335,14 +336,14 @@ class NewsGrabber:
             repl.update(shortMonth)
             repl.update(bulan)
             date = self._multireplace(date.lower(), repl)
-            self.__verboseprint('[DATE] normalization result: "{0}"'.format(date))
+            self.__debugprint('[DATE] normalization result: "{0}"'.format(date))
 
         date = re.sub(r'[^0-9:\s\/\-]', '', date)
-        self.__verboseprint('[DATE] trim result: "{0}"'.format(date))
+        self.__debugprint('[DATE] trim result: "{0}"'.format(date))
 
         if "date_regex" in config and len(config["date_regex"]) > 0:
             reg = re.compile(config["date_regex"])
-            self.__verboseprint('[DATE] using date_regex config')
+            self.__debugprint('[DATE] using date_regex config')
             try:
                 matches = reg.search(date).groupdict()
                 date = '{d}/{m}/{y} {h}:{i}'.format_map(matches)
