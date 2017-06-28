@@ -333,16 +333,19 @@ class NewsGrabber:
             repl.update(shortMonth)
             repl.update(bulan)
             date = self._multireplace(date.lower(), repl)
+            self.__verboseprint('[DATE] normalization result: "{0}"'.format(date))
+
+        date = re.sub(r'[^0-9:\s\/\-]', '', date)
+        self.__verboseprint('[DATE] trim result: "{0}"'.format(date))
+
         if "date_regex" in config and len(config["date_regex"]) > 0:
             reg = re.compile(config["date_regex"])
+            self.__verboseprint('[DATE] using date_regex config')
             try:
                 matches = reg.search(date).groupdict()
                 date = '{d}/{m}/{y} {h}:{i}'.format_map(matches)
             except Exception as e:
-                date = re.sub(r'[^0-9:\s\/\-]', '', date)
-        else:
-            date = re.sub(r'[^0-9:\s\/\-]', '', date)
-
+                raise RuntimeError('[DATE] failed to regex capture date: {0}'.format(str(e)))
         try:
             parser = dp()
             df = True if 'day_first' not in config or config['day_first'] else False
