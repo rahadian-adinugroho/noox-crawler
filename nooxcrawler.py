@@ -24,7 +24,7 @@ def check_with_db(urls):
     :rtype: list
     """
     try:
-        db = pymysql.connect('localhost', 'root', '', 'nooxdbapi')
+        db = pymysql.connect('localhost', 'root', '', 'nooxdb')
     except Exception as e:
         return []
     cursor = db.cursor()
@@ -79,7 +79,7 @@ def process_output_providers(destinations, config):
             if dest == 'json':
                 initialized = o_providers[dest](config['sitename']+'.json', True)
             elif dest == 'NooxDB':
-                initialized = o_providers[dest]({'db_url': 'localhost', 'db_username': 'root', 'db_password': '', 'db_name': 'nooxdbapi'}, config['noox_config'])
+                initialized = o_providers[dest]({'db_url': 'localhost', 'db_username': 'root', 'db_password': '', 'db_name': 'nooxdb'}, config['noox_config'])
 
             o_destinations.append(initialized)
     return o_destinations
