@@ -86,7 +86,8 @@ class LinkExtractor:
                     # if we got a html page, extract the a tag with href matching with regex
                     soup = BeautifulSoup(page.text, 'lxml', parse_only=SoupStrainer('a', attrs={'href': regex}))
                     for tag in soup.find_all('a'):
-                        url = self._trim_url_query(tag['href'])
+                        # it is necessary to remove any non ascii characters in the url
+                        url = self._trim_url_query(tag['href']).encode('ascii', errors='ignore').decode('ascii')
                         url_np = re.sub(r'https?://', '', url)
                         if url_np not in links_np:
                             self._links.append(url)

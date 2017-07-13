@@ -113,7 +113,12 @@ def crawler(config: dict, args):
     if len(news) > 0:
         for output in process_output_providers(args.output, config):
             verboseprint('Using output provider: {0}'.format(output.__class__.__name__))
-            output.save(news)
+            try:
+                output.save(news)
+            except Exception as e:
+                if args.debug:
+                    raise e
+                print('[WARNING] While saving output: {0}: {1}'.format(output.__class__.__name__, str(e)))
     else:
         print('No data to output...')
 
